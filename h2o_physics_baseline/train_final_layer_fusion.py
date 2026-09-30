@@ -38,6 +38,21 @@ def temporal_acceleration(value: torch.Tensor) -> torch.Tensor:
     return delta[:, :, 1:] - delta[:, :, :-1]
 
 
+def augment_training_batch(tensors: dict[str, torch.Tensor]) -> None:
+    """Apply matched image-space augmentation without altering masks/provenance."""
+    if random.random() < 0.5:
+        for key in ("input", "base", "proposal", "target"):
+            tensors[key] = torch.flip(tensors[key], dims=(-1,))
+    gain = random.uniform(0.9, 1.1)
+    offset = random.uniform(-0.03, 0.03)
+    rgb_channels = 7 * 3
+    tensors["input"][:, :rgb_channels] = (
+        tensors["input"][:, :rgb_channels] * gain + offset
+    ).clamp(0.0, 1.0)
+    for key in ("base", "proposal", "target"):
+        tensors[key] = (tensors[key] * gain + offset).clamp(0.0, 1.0)
+
+
 @torch.no_grad()
 def evaluate(model: AuthorizedFinalFusion, loader: DataLoader, device: torch.device) -> dict[str, float]:
     model.eval()
@@ -46,11 +61,12 @@ def evaluate(model: AuthorizedFinalFusion, loader: DataLoader, device: torch.dev
     for batch in loader:
         tensors = {key: value.to(device) for key, value in batch.items() if torch.is_tensor(value)}
         output, _, _ = model(
-            tensors["input"], tensors["base"], tensors["proposal"], tensors["authorized"]
+            tensors["input"], tensors["base"], tensors["proposal"], tensors["edit_weight"]
         )
         target = tensors["target"]
         auth = tensors["authorized"]
         locked = 1.0 - auth
+        noneditable = (tensors["edit_weight"] == 0).float()
         metrics = {
             "l1": F.l1_loss(output, target),
             "authorized_l1": masked_mean((output - target).abs(), auth),
@@ -60,7 +76,17 @@ def evaluate(model: AuthorizedFinalFusion, loader: DataLoader, device: torch.dev
             "proposal_authorized_l1": masked_mean(
                 (tensors["proposal"] - target).abs(), auth
             ),
-            "locked_max_change": ((output - tensors["proposal"]).abs() * locked).max(),
+            "authorized_fraction": auth.mean(),
+            "soft_only_fraction": (
+                (tensors["edit_weight"] > 0) & (auth == 0)
+            ).float().mean(),
+            "mean_edit_weight": tensors["edit_weight"].mean(),
+            "locked_mean_change": masked_mean(
+                (output - tensors["proposal"]).abs(), locked
+            ),
+            "noneditable_max_change": (
+                (output - tensors["proposal"]).abs() * noneditable
+            ).max(),
             "delta_l1": F.l1_loss(temporal_delta(output), temporal_delta(target)),
             "acceleration_l1": F.l1_loss(
                 temporal_acceleration(output), temporal_acceleration(target)
@@ -83,6 +109,15 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--width", type=int, default=16)
     parser.add_argument("--blocks", type=int, default=1)
+    parser.add_argument(
+        "--blend-mode", choices=("convex", "legacy_extrapolating"),
+        default="convex",
+    )
+    parser.add_argument("--residual-limit", type=float, default=0.03)
+    parser.add_argument(
+        "--allow-split-mismatch", action="store_true",
+        help="Permit non-train/non-validation roots (for explicit diagnostics only).",
+    )
     parser.add_argument("--window", type=int, default=5)
     parser.add_argument("--stride", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=5)
@@ -103,6 +138,10 @@ def main() -> None:
     parser.add_argument("--temporal-tolerance", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=26)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument(
+        "--augmentation", action=argparse.BooleanOptionalAction, default=True,
+        help="Matched horizontal and photometric augmentation for the tiny training set.",
+    )
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -111,9 +150,20 @@ def main() -> None:
     device = torch.device(args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu")
     train_data = FinalLayerWindowDataset(args.train_root, args.index, args.window, args.stride)
     val_data = FinalLayerWindowDataset(args.val_root, args.index, args.window, args.window)
+    train_splits = sorted({clip.split for clip in train_data.clips})
+    val_splits = sorted({clip.split for clip in val_data.clips})
+    if not args.allow_split_mismatch and (
+        train_splits != ["train"] or val_splits != ["val"]
+    ):
+        raise ValueError(
+            "Expected train roots from split=train and validation roots from "
+            f"split=val; found train={train_splits}, val={val_splits}"
+        )
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=0)
-    model = AuthorizedFinalFusion(args.width, args.blocks).to(device)
+    model = AuthorizedFinalFusion(
+        args.width, args.blocks, args.residual_limit, args.blend_mode
+    ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     args.output.mkdir(parents=True, exist_ok=True)
 
@@ -133,8 +183,10 @@ def main() -> None:
         running = 0.0
         for batch in train_loader:
             tensors = {key: value.to(device) for key, value in batch.items() if torch.is_tensor(value)}
-            output, blend_delta, residual = model(
-                tensors["input"], tensors["base"], tensors["proposal"], tensors["authorized"]
+            if args.augmentation:
+                augment_training_batch(tensors)
+            output, blend_control, residual = model(
+                tensors["input"], tensors["base"], tensors["proposal"], tensors["edit_weight"]
             )
             auth = tensors["authorized"]
             target = tensors["target"]
@@ -157,7 +209,7 @@ def main() -> None:
                 full_acceleration - proposal_acceleration
             )
             regularizer = masked_mean(residual.abs(), auth) + 0.05 * masked_mean(
-                (blend_delta[:, :, 1:] - blend_delta[:, :, :-1]).abs(), delta_mask
+                (blend_control[:, :, 1:] - blend_control[:, :, :-1]).abs(), delta_mask
             )
             loss = (
                 reconstruction
@@ -200,13 +252,19 @@ def main() -> None:
         "protocol": "current final layered pipeline; terminal authorized fusion only",
         "train_pair_ids": [clip.pair_id for clip in train_data.clips],
         "val_pair_ids": [clip.pair_id for clip in val_data.clips],
+        "train_splits": train_splits,
+        "val_splits": val_splits,
         "train_windows": len(train_data),
         "val_windows": len(val_data),
         "parameter_count": parameter_count(model),
         "best_epoch": best_epoch,
         "best_authorized_l1": best,
         "initialization": "exact current constrained-ProPainter output",
-        "hard_lock": "output equals current final output outside repair minus foreground/object",
+        "correction_policy": (
+            "full edits in authorized repair pixels; reliability-weighted corrections "
+            "up to 25% at seams and hand/object boundaries, smaller corrections on "
+            "transported source interiors"
+        ),
         "history": history,
     }
     (args.output / "summary.json").write_text(

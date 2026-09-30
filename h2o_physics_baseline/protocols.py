@@ -115,6 +115,83 @@ PROTOCOL_ALLOWED: dict[str, frozenset[str]] = {
 }
 
 
+# The layered renderer is newer than the condition-mode experiments above and
+# has a different set of actual file reads.  Validate its exported manifest,
+# rather than inferring the contract from a model name.
+LAYERED_CONTRACT_VERSION = 2
+LAYERED_PROTOCOLS: dict[str, dict[str, bool]] = {
+    "anchored_gt_mount_annotated_object": {
+        "ego_first_rgbd": True,
+        "ego_first_pose": True,
+        "annotated_object_pose": True,
+        "future_ego_rgb_for_inference": False,
+    },
+    "anchored_gt_mount_no_object": {
+        "ego_first_rgbd": True,
+        "ego_first_pose": True,
+        "annotated_object_pose": False,
+        "future_ego_rgb_for_inference": False,
+    },
+    "exo_only_gt_mount_annotated_object": {
+        "ego_first_rgbd": False,
+        "ego_first_pose": True,
+        "annotated_object_pose": True,
+        "future_ego_rgb_for_inference": False,
+    },
+    "exo_only_gt_mount_no_object": {
+        "ego_first_rgbd": False,
+        "ego_first_pose": True,
+        "annotated_object_pose": False,
+        "future_ego_rgb_for_inference": False,
+    },
+    "exo_only_estimated_mount_annotated_object": {
+        "ego_first_rgbd": False,
+        "ego_first_pose": False,
+        "annotated_object_pose": True,
+        "future_ego_rgb_for_inference": False,
+    },
+    "exo_only_estimated_mount": {
+        "ego_first_rgbd": False,
+        "ego_first_pose": False,
+        "annotated_object_pose": False,
+        "future_ego_rgb_for_inference": False,
+    },
+}
+
+
+def validate_layered_manifest(manifest: dict, protocol: str | None = None) -> dict:
+    """Check the renderer's recorded file-level input contract.
+
+    This does not prove that an arbitrary Python edit cannot read another file;
+    it makes the current renderer/fusion hand-off fail closed when required
+    provenance fields are absent or inconsistent.
+    """
+    contract = manifest.get("input_contract")
+    if not isinstance(contract, dict):
+        raise ValueError("Layered export has no input_contract; regenerate it")
+    if contract.get("version") != LAYERED_CONTRACT_VERSION:
+        raise ValueError(
+            "Unsupported layered input contract version: "
+            f"{contract.get('version')!r}"
+        )
+    actual_protocol = manifest.get("protocol_name")
+    expected_protocol = protocol or actual_protocol
+    if expected_protocol not in LAYERED_PROTOCOLS:
+        raise ValueError(f"Unknown layered protocol: {expected_protocol!r}")
+    if actual_protocol != expected_protocol:
+        raise ValueError(
+            f"Expected layered protocol {expected_protocol!r}, found {actual_protocol!r}"
+        )
+    mismatches = {
+        key: {"required": expected, "found": contract.get(key)}
+        for key, expected in LAYERED_PROTOCOLS[expected_protocol].items()
+        if contract.get(key) is not expected
+    }
+    if mismatches:
+        raise ValueError(f"Layered input contract mismatch: {mismatches}")
+    return contract
+
+
 def validate_protocol(condition_mode: str, protocol: str) -> frozenset[str]:
     if condition_mode not in MODE_REQUIREMENTS:
         raise ValueError(f"Unknown condition mode: {condition_mode}")

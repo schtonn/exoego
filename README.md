@@ -1,6 +1,7 @@
 # ExoEgo
 
-Research code for physics-constrained exocentric-to-egocentric video synthesis.
+Research code for geometry- and kinematics-constrained exocentric-to-egocentric
+video synthesis. It does not currently enforce contact dynamics.
 The current implementation targets H2O and separates the prediction into:
 
 1. camera-motion-aware static background transport;
@@ -11,7 +12,8 @@ The current implementation targets H2O and separates the prediction into:
 
 The central rule is provenance-aware synthesis: measured pixels, transported
 pixels, and generated pixels remain separate until the final constrained
-composition. Reliable hand/arm and object pixels are hard locked.
+composition. The current fusion uses conservative source reliability rather
+than making every hand/object-mask decision irreversible.
 
 ![H2O pipeline and input ablations](assets/h2_3_overview.jpg)
 
@@ -79,6 +81,8 @@ python h2o_physics_baseline/render_causal_video_background_split.py --help
 python h2o_physics_baseline/compose_propainter_repair.py --help
 python h2o_physics_baseline/render_input_ablation_comparison.py --help
 python h2o_physics_baseline/evaluate_input_ablation.py --help
+python h2o_physics_baseline/evaluate_layered_baselines.py --help
+python h2o_physics_baseline/export_projected_gt_masks.py --help
 ```
 
 See [the inference contract](docs/inference_contract.md),
@@ -87,9 +91,13 @@ See [the inference contract](docs/inference_contract.md),
 
 ## Current status
 
-The strongest validated configuration uses four synchronized exocentric RGB-D
-views plus the first egocentric RGB-D frame. Reduced-input variants are included
-to measure dependence on the first frame, multi-view coverage, and the initial
-head-camera relationship. The current code is research-grade and not a
-production video generator.
+The reported eight-scene ablation is a **subject-3 validation result**, not a
+held-out test result. Its full configuration uses four synchronized exocentric
+RGB-D views, the first egocentric RGB-D frame and its ground-truth pose, and H2O
+object-pose annotations. Later ego RGB frames are read for visualization and
+metrics only. Per-frame head motion is estimated from exo views.
 
+A frozen subject-4 pipeline has been added with split checks. One subject-4
+scene has been run end to end; the remaining seven are not yet complete. The
+default ProPainter stage and temporal hand cleanup are offline, so the current
+pipeline should not be called fully causal.

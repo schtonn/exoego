@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -19,9 +20,19 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--frames", type=int, default=4)
+    parser.add_argument(
+        "--index", type=Path,
+        default=Path("datasets/H2O/oracle_state/paired_physical_clips.csv"),
+    )
+    parser.add_argument(
+        "--stats", type=Path,
+        default=Path("datasets/H2O/oracle_state/train_feature_stats.json"),
+    )
     args = parser.parse_args()
     dataset = H2OPhysicalClipDataset(
         split="train",
+        index_path=args.index,
+        stats_path=args.stats,
         frames_per_clip=args.frames,
         image_size=args.image_size,
         max_samples=2,

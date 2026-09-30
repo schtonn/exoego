@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from h2o_geometric_baseline.reprojection import load_intrinsics, load_pose, reproject_rgbd
 from h2o_physics_baseline.dataset import DEFAULT_INDEX
+from h2o_physics_baseline.protocols import LAYERED_CONTRACT_VERSION
 from h2o_physics_baseline.annotated_object_layer import (
     annotated_exo_object_geometry_layer,
     annotated_exo_object_layer,
@@ -398,7 +399,8 @@ def smooth_world_points(points: np.ndarray) -> np.ndarray:
 
 
 def smoothed_pose_map(
-    frames: list[int], initial_pose: np.ndarray, head_record: dict
+    frames: list[int], initial_pose: np.ndarray, head_record: dict,
+    rotation_scale: float = 0.5,
 ) -> dict[int, np.ndarray]:
     translations = [np.zeros(3, dtype=np.float64)]
     rotations = [np.eye(3, dtype=np.float64)]
@@ -433,15 +435,41 @@ def smoothed_pose_map(
     for frame, translation, rotation in zip(frames, translations, rotations_projected):
         pose = initial_pose.copy()
         pose[:3, 3] += translation
-        pose[:3, :3] = scaled_rotation(rotation, 0.5) @ initial_pose[:3, :3]
+        pose[:3, :3] = scaled_rotation(rotation, rotation_scale) @ initial_pose[:3, :3]
         result[frame] = pose
     return result
 
 
+def head_pose_confidence_map(frames: list[int], head_record: dict) -> dict[int, float]:
+    """Turn face support, RANSAC agreement and residual into a bounded score."""
+    records = {int(value["frame"]): value for value in head_record["future"]}
+    detected = dict(zip(frames, head_record.get("detected_exo_views", [])))
+    confidence = {frames[0]: 1.0}
+    for frame in frames[1:]:
+        record = records[frame]
+        if "estimated_head_transform_world" not in record:
+            confidence[frame] = 0.0
+            continue
+        if "pose_confidence" in record:
+            confidence[frame] = float(np.clip(record["pose_confidence"], 0.0, 1.0))
+            continue
+        common = max(int(record.get("common_landmarks", 0)), 1)
+        inlier_ratio = int(record.get("ransac_inliers", 0)) / common
+        view_factor = min(1.0, float(detected.get(frame, 0)) / 2.0)
+        residual_factor = float(np.exp(
+            -float(record.get("inlier_residual_mean_m", 0.0)) / 0.025
+        ))
+        confidence[frame] = float(np.clip(
+            inlier_ratio * view_factor * residual_factor, 0.0, 1.0
+        ))
+    return confidence
+
+
 def compute_motion_masks(
-    camera_roots: list[Path], frames: list[int], size: tuple[int, int] = (160, 90)
+    camera_roots: list[Path], frames: list[int], size: tuple[int, int] = (160, 90),
+    causal: bool = False,
 ) -> dict[tuple[str, int], np.ndarray]:
-    """Fixed-exo depth background model; closer time-varying surfaces are foreground."""
+    """Fixed-exo depth background model; optionally use only depth seen so far."""
     masks: dict[tuple[str, int], np.ndarray] = {}
     for camera in camera_roots:
         depths = []
@@ -451,9 +479,12 @@ def compute_motion_masks(
             )
             depths.append(np.asarray(depth, dtype=np.float32))
         stack = np.stack(depths)
-        with np.errstate(invalid="ignore"):
-            background = np.nanpercentile(np.where(stack > 0, stack, np.nan), 90, axis=0)
-        for frame, depth in zip(frames, stack):
+        for index, (frame, depth) in enumerate(zip(frames, stack)):
+            history = stack[: index + 1] if causal else stack
+            with np.errstate(invalid="ignore"):
+                background = np.nanpercentile(
+                    np.where(history > 0, history, np.nan), 90, axis=0
+                )
             dynamic = (depth > 0) & np.isfinite(background) & ((background - depth) > 30.0)
             # Expand to absorb limb/object boundaries and depth quantization.
             dynamic_image = Image.fromarray(dynamic.astype(np.uint8) * 255).filter(
@@ -461,6 +492,30 @@ def compute_motion_masks(
             )
             masks[(str(camera), frame)] = np.asarray(dynamic_image) > 0
     return masks
+
+
+def add_systematic_pose_noise(
+    poses: dict[int, np.ndarray], rotation_degrees: float,
+    translation_m: float, seed: int,
+) -> dict[int, np.ndarray]:
+    """Apply one repeatable calibration-like perturbation to an entire trajectory."""
+    if rotation_degrees == 0.0 and translation_m == 0.0:
+        return poses
+    rng = np.random.default_rng(seed)
+    axis = rng.normal(size=3)
+    axis /= max(float(np.linalg.norm(axis)), 1e-12)
+    rotation_vector = axis * np.deg2rad(rotation_degrees)
+    noisy_rotation, _ = cv2.Rodrigues(rotation_vector.astype(np.float64))
+    direction = rng.normal(size=3)
+    direction /= max(float(np.linalg.norm(direction)), 1e-12)
+    translation = direction * translation_m
+    result = {}
+    for frame, original in poses.items():
+        pose = original.copy()
+        pose[:3, :3] = pose[:3, :3] @ noisy_rotation
+        pose[:3, 3] += translation
+        result[frame] = pose
+    return result
 
 
 def projected_motion_support(
@@ -612,6 +667,7 @@ def generate_unknown_background(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--index", type=Path, default=DEFAULT_INDEX)
     parser.add_argument("--pair-id", required=True)
     parser.add_argument("--head-summary", type=Path, required=True)
     parser.add_argument("--student-state-root", type=Path, required=True)
@@ -652,6 +708,17 @@ def main() -> None:
         action="store_true",
         help="Apply a bounded robust RGB offset before source-border blending.",
     )
+    parser.add_argument(
+        "--head-rotation-scale", type=float, default=0.5,
+        help="Scale exo-estimated head rotation; 0.5 is the frozen validation setting.",
+    )
+    parser.add_argument(
+        "--causal-motion-masks", action="store_true",
+        help="Build each exo depth background from current/past frames only.",
+    )
+    parser.add_argument("--pose-noise-rotation-deg", type=float, default=0.0)
+    parser.add_argument("--pose-noise-translation-m", type=float, default=0.0)
+    parser.add_argument("--pose-noise-seed", type=int, default=0)
     parser.add_argument(
         "--annotated-exo-object",
         action="store_true",
@@ -725,6 +792,8 @@ def main() -> None:
         raise ValueError("--object-source-hand-margin must be non-negative")
     if args.object_source_front_margin_m < 0:
         raise ValueError("--object-source-front-margin-m must be non-negative")
+    if args.pose_noise_rotation_deg < 0 or args.pose_noise_translation_m < 0:
+        raise ValueError("pose-noise magnitudes must be non-negative")
     if args.disable_ego_anchor and args.annotated_exo_object_mode.startswith("anchor_warp"):
         raise ValueError("anchor_warp requires ego frame 0; disable the object anchor too")
     if args.initial_pose_summary is not None and not args.disable_ego_anchor:
@@ -738,7 +807,7 @@ def main() -> None:
     # inherit its data selection from an obsolete learned-model checkpoint.
     # Resolve the requested clip directly from the canonical paired index and
     # collect its four synchronized exo streams in camera order.
-    with DEFAULT_INDEX.open(encoding="utf-8") as handle:
+    with args.index.open(encoding="utf-8") as handle:
         indexed_rows = list(csv.DictReader(handle))
     matches = [value for value in indexed_rows if value["pair_id"] == args.pair_id]
     if len(matches) != 1:
@@ -804,8 +873,17 @@ def main() -> None:
     head_record = next(
         value for value in head_summary["per_clip"] if value["pair_id"] == args.pair_id
     )
-    poses = smoothed_pose_map(frames, initial_pose, head_record)
-    motion_masks = compute_motion_masks(source_roots, frames)
+    poses = smoothed_pose_map(
+        frames, initial_pose, head_record, rotation_scale=args.head_rotation_scale
+    )
+    poses = add_systematic_pose_noise(
+        poses, args.pose_noise_rotation_deg, args.pose_noise_translation_m,
+        args.pose_noise_seed,
+    )
+    pose_confidences = head_pose_confidence_map(frames, head_record)
+    motion_masks = compute_motion_masks(
+        source_roots, frames, causal=args.causal_motion_masks
+    )
     initial_rgb_u8 = np.asarray(
         Image.open(target_root / "rgb" / f"{first_frame:06d}.png").convert("RGB")
     )
@@ -1325,6 +1403,8 @@ def main() -> None:
                     "arm_fraction": float(arm_valid.mean()),
                     "object_fraction": float(object_valid.mean()),
                     "dynamic_completion_fraction": float(dynamic_completion.mean()),
+                    "predicted_camera_pose_world": pose.tolist(),
+                    "predicted_camera_pose_confidence": pose_confidences[frame],
                 }
             )
         tiles = [
@@ -1378,8 +1458,47 @@ def main() -> None:
     if return_code != 0:
         raise RuntimeError(f"ffmpeg failed with exit code {return_code}")
     if args.model_input_root is not None:
+        ego_first_pose = args.initial_pose_summary is None
+        ego_first_rgbd = not args.disable_ego_anchor
+        annotated_object_pose = args.annotated_exo_object
+        if ego_first_rgbd:
+            protocol_name = (
+                "anchored_gt_mount_annotated_object"
+                if annotated_object_pose else "anchored_gt_mount_no_object"
+            )
+        elif ego_first_pose:
+            protocol_name = (
+                "exo_only_gt_mount_annotated_object"
+                if annotated_object_pose else "exo_only_gt_mount_no_object"
+            )
+        else:
+            protocol_name = (
+                "exo_only_estimated_mount_annotated_object"
+                if annotated_object_pose else "exo_only_estimated_mount"
+            )
         manifest = {
             "pair_id": args.pair_id,
+            "protocol_name": protocol_name,
+            "input_contract": {
+                "version": LAYERED_CONTRACT_VERSION,
+                "dataset_split": row.get("split"),
+                "exo_rgbd_and_calibration": True,
+                "ego_first_rgbd": ego_first_rgbd,
+                "ego_first_pose": ego_first_pose,
+                "annotated_object_pose": annotated_object_pose,
+                "future_ego_rgb_for_inference": False,
+                "future_ego_rgb_read_for_visualization": True,
+                "head_hand_arm_state_estimated_from_exo": True,
+                "motion_mask_history": (
+                    "past_and_present" if args.causal_motion_masks else "whole_clip"
+                ),
+                "offline_noncausal": not args.causal_motion_masks,
+                "head_rotation_scale": args.head_rotation_scale,
+                "head_rotation_scale_selection": "validation_tuned",
+                "pose_noise_rotation_deg": args.pose_noise_rotation_deg,
+                "pose_noise_translation_m": args.pose_noise_translation_m,
+                "pose_noise_seed": args.pose_noise_seed,
+            },
             "frame_count": len(frames),
             "image_size": render_size,
             "mask_policy": (
@@ -1408,6 +1527,7 @@ def main() -> None:
             "single_view_limb_completion_enabled": args.complete_single_view_limbs,
             "missing_limb_completion_enabled": completion_enabled,
             "initial_pose_source": initial_pose_source,
+            "ego_first_pose_world": initial_pose.tolist(),
             "initial_head_camera_relationship_input": args.initial_pose_summary is None,
             "ablation_scope": (
                 "appearance and state streams follow the selected source/state cameras; "

@@ -129,7 +129,11 @@ def difference_panel(first: np.ndarray, second: np.ndarray) -> Image.Image:
 def load_model(path: Path, device: torch.device) -> AuthorizedFinalFusion:
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
     config = checkpoint["config"]
-    model = AuthorizedFinalFusion(int(config["width"]), int(config["blocks"]))
+    model = AuthorizedFinalFusion(
+        int(config["width"]), int(config["blocks"]),
+        float(config.get("residual_limit", 0.08)),
+        str(config.get("blend_mode", "legacy_extrapolating")),
+    )
     model.load_state_dict(checkpoint["model"])
     return model.to(device).eval()
 
@@ -167,7 +171,11 @@ def infer_clip_models(
         proposal = sample["proposal"].to(device)
         authorized = sample["authorized"].to(device)
         outputs = [
-            model(inputs, base, proposal, authorized)[0].cpu()
+            model(
+                inputs, base, proposal,
+                authorized if model.blend_mode == "legacy_extrapolating"
+                else sample["edit_weight"].to(device),
+            )[0].cpu()
             for model in models
         ]
         current_batch = outputs[0].shape[0]

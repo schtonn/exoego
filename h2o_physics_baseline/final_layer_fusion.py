@@ -2,9 +2,9 @@
 """Learn only the authorized terminal fusion of the final layered pipeline.
 
 This module deliberately does not reconstruct the ego frame from scratch.  It
-consumes exports from ``render_causal_video_background_split.py`` and keeps all
-reliable measured/transported pixels bit-exact.  A model may blend the fixed
-ProPainter proposal and add a bounded residual only in the repair region.
+consumes exports from ``render_causal_video_background_split.py``. A model may
+fully edit explicit repair pixels and make smaller reliability-weighted
+corrections to transported pixels, while keeping every correction bounded.
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
+
+from h2o_physics_baseline.protocols import validate_layered_manifest
 
 
 RGB_STREAMS = (
@@ -41,6 +43,7 @@ MASK_STREAMS = (
 )
 PROVENANCE_CLASSES = 6
 INPUT_CHANNELS = len(RGB_STREAMS) * 3 + len(MASK_STREAMS) + PROVENANCE_CLASSES
+SOFT_CORRECTION_LIMIT = 0.25
 
 
 def _rgb(path: Path, size: tuple[int, int] | None = None) -> torch.Tensor:
@@ -63,6 +66,8 @@ class LayeredClip:
     pair_id: str
     target_rgb_dir: Path
     dataset_frames: tuple[int, ...]
+    split: str
+    pose_confidences: tuple[float, ...]
 
 
 def discover_clip(
@@ -92,11 +97,28 @@ def discover_clip(
         raise ValueError(
             f"{root} is not a current full4+anchor+physical-object export: {mismatches}"
         )
+    if require_full_protocol:
+        validate_layered_manifest(
+            manifest, protocol="anchored_gt_mount_annotated_object"
+        )
+    elif "input_contract" in manifest:
+        validate_layered_manifest(manifest)
     with index_path.open(encoding="utf-8") as handle:
         rows = [row for row in csv.DictReader(handle) if row["pair_id"] == manifest["pair_id"]]
     if len(rows) != 1:
         raise ValueError(f"Expected one index row for {manifest['pair_id']}, found {len(rows)}")
     frames = tuple(int(record["dataset_frame"]) for record in manifest["frames"])
+    expected_frames = tuple(
+        range(int(rows[0]["start_frame"]), int(rows[0]["end_frame"]) + 1)
+    )
+    if frames != expected_frames:
+        raise ValueError(f"Manifest frames do not match canonical index for {manifest['pair_id']}")
+    contract = manifest.get("input_contract", {})
+    if contract and contract.get("dataset_split") != rows[0]["split"]:
+        raise ValueError(
+            "Manifest split does not match canonical index: "
+            f"{contract.get('dataset_split')!r} != {rows[0]['split']!r}"
+        )
     expected_names = {f"{index:06d}.png" for index in range(len(frames))}
     stream_directories = {
         name: (
@@ -121,6 +143,11 @@ def discover_clip(
         pair_id=manifest["pair_id"],
         target_rgb_dir=Path(rows[0]["target_rgb_dir"]),
         dataset_frames=frames,
+        split=rows[0]["split"],
+        pose_confidences=tuple(
+            float(record.get("predicted_camera_pose_confidence", 1.0))
+            for record in manifest["frames"]
+        ),
     )
 
 
@@ -190,22 +217,62 @@ class FinalLayerWindowDataset(Dataset):
 
         # Network convention is C,T,H,W.  Preserve named base/masks as well so
         # composition and audits cannot accidentally use inferred channels.
+        provenance_tensor = torch.stack(provenance, dim=1)
         input_tensor = torch.cat(
             [torch.stack(streams[name], dim=1) for name in RGB_STREAMS]
             + [torch.stack(masks[name], dim=1) for name in MASK_STREAMS]
-            + [torch.stack(provenance, dim=1)],
+            + [provenance_tensor],
             dim=0,
         )
         foreground = torch.stack(masks["foreground_masks"], dim=1)
         physical_object = torch.stack(masks["object_masks"], dim=1)
         repair = torch.stack(masks["repair_masks"], dim=1)
         authorized = repair * (1.0 - torch.maximum(foreground, physical_object))
+        # A binary lock makes pose and segmentation mistakes permanent.  Use a
+        # conservative reliability prior: current exo transport is more
+        # reliable than history, generated pixels are least reliable, and
+        # hand/object boundaries plus source seams are explicitly uncertain.
+        dynamic = torch.maximum(foreground, physical_object)
+        eroded = 1.0 - F.max_pool2d(1.0 - dynamic, kernel_size=5, stride=1, padding=2)
+        inner_boundary = (dynamic - eroded).clamp(0.0, 1.0)
+        source_reliability = torch.ones_like(dynamic)
+        labels = provenance_tensor.argmax(dim=0, keepdim=True) + 1
+        for label, reliability in ((1, 1.0), (2, 0.95), (3, 0.85), (4, 0.2)):
+            source_reliability = torch.where(
+                labels == label,
+                reliability * torch.ones_like(source_reliability),
+                source_reliability,
+            )
+        pose_reliability = torch.tensor(
+            clip.pose_confidences[start : start + self.window], dtype=torch.float32
+        )[None, :, None, None]
+        transported = (labels >= 1) & (labels <= 3)
+        source_reliability = torch.where(
+            transported,
+            torch.minimum(source_reliability, pose_reliability),
+            source_reliability,
+        )
+        source_reliability = torch.where(
+            dynamic.bool(), 0.8 * torch.ones_like(dynamic), source_reliability
+        )
+        source_reliability = torch.where(
+            inner_boundary.bool(), torch.zeros_like(dynamic), source_reliability
+        )
+        source_reliability = torch.where(
+            torch.stack(masks["seam_masks"], dim=1).bool(),
+            torch.zeros_like(source_reliability), source_reliability,
+        )
+        edit_weight = torch.maximum(
+            authorized, (1.0 - source_reliability) * SOFT_CORRECTION_LIMIT
+        )
         return {
             "input": input_tensor,
             "base": torch.stack(streams["input_frames"], dim=1),
             "proposal": torch.stack(streams["proposal_frames"], dim=1),
             "target": torch.stack(targets, dim=1),
             "authorized": authorized,
+            "edit_weight": edit_weight,
+            "source_reliability": source_reliability,
             "repair": repair,
             "foreground": foreground,
             "object": physical_object,
@@ -233,11 +300,17 @@ class Residual3D(nn.Module):
 
 
 class AuthorizedFinalFusion(nn.Module):
-    """Temporal U-Net head with hard, external pixel authorization."""
+    """Temporal U-Net head with externally bounded per-pixel corrections."""
 
-    def __init__(self, width: int = 16, blocks: int = 1, residual_limit: float = 0.08) -> None:
+    def __init__(
+        self, width: int = 16, blocks: int = 1,
+        residual_limit: float = 0.03, blend_mode: str = "convex",
+    ) -> None:
         super().__init__()
+        if blend_mode not in {"convex", "legacy_extrapolating"}:
+            raise ValueError(f"Unknown blend mode: {blend_mode}")
         self.residual_limit = residual_limit
+        self.blend_mode = blend_mode
         self.stem = nn.Conv3d(INPUT_CHANNELS, width, 3, padding=1)
         self.enc = nn.Sequential(*[Residual3D(width) for _ in range(blocks)])
         self.down = nn.Conv3d(width, width * 2, 3, stride=(1, 2, 2), padding=1)
@@ -249,23 +322,35 @@ class AuthorizedFinalFusion(nn.Module):
         # random re-blending of its outputs.  Zero head => exact proposal.
         nn.init.zeros_(self.head[-1].weight)
         nn.init.zeros_(self.head[-1].bias)
+        if blend_mode == "convex":
+            # sigmoid(-12) is effectively zero: the untrained model reproduces
+            # the proposal without permitting extrapolation past either input.
+            with torch.no_grad():
+                self.head[-1].bias[0] = -12.0
 
     def forward(
         self,
         inputs: torch.Tensor,
         base: torch.Tensor,
         proposal: torch.Tensor,
-        authorized: torch.Tensor,
+        edit_weight: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         skip = self.enc(self.stem(inputs))
         value = self.mid(self.down(skip))
         value = F.interpolate(value, size=skip.shape[-3:], mode="trilinear", align_corners=False)
         raw = self.head(self.dec(self.up(value) + skip))
-        blend_delta = torch.tanh(raw[:, :1])
+        if self.blend_mode == "convex":
+            blend_control = torch.sigmoid(raw[:, :1])
+            candidate = (
+                proposal * (1.0 - blend_control) + base * blend_control
+            )
+        else:
+            blend_control = torch.tanh(raw[:, :1])
+            candidate = proposal + blend_control * (proposal - base)
         residual = torch.tanh(raw[:, 1:]) * self.residual_limit
-        candidate = proposal + blend_delta * (proposal - base) + residual
-        output = proposal + authorized * (candidate - proposal)
-        return output.clamp(0.0, 1.0), blend_delta, residual
+        candidate = candidate + residual
+        output = proposal + edit_weight * (candidate - proposal)
+        return output.clamp(0.0, 1.0), blend_control, residual
 
 
 def parameter_count(model: nn.Module) -> int:

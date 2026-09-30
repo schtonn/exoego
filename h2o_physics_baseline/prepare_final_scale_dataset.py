@@ -16,11 +16,20 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import numpy as np
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from h2o_physics_baseline.protocols import (
+    LAYERED_CONTRACT_VERSION,
+    validate_layered_manifest,
+)
+
+
 INDEX = PROJECT_ROOT / "datasets/H2O/oracle_state/paired_physical_clips.csv"
 HEAD_SUMMARY = PROJECT_ROOT / "datasets/H2O/experiments/exo_face_head_motion/summary_train32.json"
 DETECTION_PYTHON = PROJECT_ROOT / "envs/h2o-detection/bin/python"
@@ -35,6 +44,17 @@ DEFAULT_PAIRS = (
     "subject2_k1_1_000352_000415_cam0_to_cam4",
     "subject2_k2_6_000704_000767_cam0_to_cam4",
     "subject2_o1_2_000096_000159_cam0_to_cam4",
+)
+
+DEFAULT_TEST_PAIRS = (
+    "subject4_h1_0_000000_000063_cam0_to_cam4",
+    "subject4_h2_3_000384_000447_cam0_to_cam4",
+    "subject4_k1_4_000160_000223_cam0_to_cam4",
+    "subject4_o1_5_000320_000383_cam0_to_cam4",
+    "subject4_o2_2_000064_000127_cam0_to_cam4",
+    "subject4_k2_4_000160_000223_cam0_to_cam4",
+    "subject4_k2_5_000000_000063_cam0_to_cam4",
+    "subject4_o1_7_000000_000063_cam0_to_cam4",
 )
 
 
@@ -67,16 +87,37 @@ def png_count(path: Path, digits: int = 6) -> int:
     ) if path.is_dir() else 0
 
 
+def layered_ready(model_input: Path, pair_id: str) -> bool:
+    manifest_path = model_input / "manifest.json"
+    if not manifest_path.exists() or png_count(model_input / "input_frames") != 64:
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text())
+        validate_layered_manifest(
+            manifest, protocol="anchored_gt_mount_annotated_object"
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        manifest.get("pair_id") == pair_id
+        and manifest["input_contract"].get("version") == LAYERED_CONTRACT_VERSION
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-root", type=Path, default=Path(
-        "datasets/H2O/experiments/final_layer_scale_train8"
-    ))
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--purpose", choices=("train", "test"), default="train")
     parser.add_argument("--pair-id", action="append", dest="pairs")
     parser.add_argument("--gpu", default="2")
     parser.add_argument("--stop-after", choices=("state", "layers", "propainter"))
     args = parser.parse_args()
-    output_root = (PROJECT_ROOT / args.output_root).resolve()
+    default_root = Path(
+        "datasets/H2O/experiments/final_layer_scale_train8"
+        if args.purpose == "train"
+        else "datasets/H2O/experiments/final_layer_frozen_test8"
+    )
+    output_root = (PROJECT_ROOT / (args.output_root or default_root)).resolve()
     state_root = output_root / "state/hand"
     arm_root = output_root / "state/arm"
     head_root = output_root / "state/head"
@@ -86,10 +127,18 @@ def main() -> None:
 
     with INDEX.open(encoding="utf-8") as handle:
         indexed = {row["pair_id"]: row for row in csv.DictReader(handle)}
-    pairs = tuple(args.pairs or DEFAULT_PAIRS)
+    pairs = tuple(args.pairs or (
+        DEFAULT_PAIRS if args.purpose == "train" else DEFAULT_TEST_PAIRS
+    ))
     missing = [pair for pair in pairs if pair not in indexed]
     if missing:
         raise ValueError(f"Pairs missing from canonical index: {missing}")
+    expected_split = "train" if args.purpose == "train" else "test"
+    wrong_split = [pair for pair in pairs if indexed[pair]["split"] != expected_split]
+    if wrong_split:
+        raise ValueError(
+            f"purpose={args.purpose} requires split={expected_split}: {wrong_split}"
+        )
 
     completed = []
     video_environment = dict(os.environ, CUDA_VISIBLE_DEVICES=args.gpu)
@@ -145,16 +194,18 @@ def main() -> None:
 
         destination = clip_root / row["sequence"].replace("/", "_") / f"{start:06d}_{end:06d}"
         model_input = destination / "model_input"
-        manifest = model_input / "manifest.json"
-        if not manifest.exists() or png_count(model_input / "input_frames") != 64:
+        if not layered_ready(model_input, pair):
             run([
                 str(VIDEO_PYTHON),
                 "h2o_physics_baseline/render_causal_video_background_split.py",
+                "--index", str(INDEX),
                 "--pair-id", pair, "--head-summary", str(head_path),
                 "--student-state-root", str(state_root),
                 "--arm-state-root", str(arm_root),
                 "--initial-hand-mask-root", str(mask_root),
+                "--object-state-root", str(INDEX.parent),
                 "--source-feather-radius", "2", "--source-color-align",
+                "--causal-motion-masks",
                 "--annotated-exo-object", "--annotated-exo-object-mode", "anchor_warp",
                 "--object-alpha", "0.25", "--model-input-root", str(model_input),
                 "--output", str(destination / "layered.mp4"),
@@ -184,12 +235,13 @@ def main() -> None:
             ], video_environment)
         completed.append({
             "pair_id": pair,
-            "root": str(destination.relative_to(PROJECT_ROOT)),
+            "root": os.path.relpath(destination, PROJECT_ROOT),
             "frames": 64,
             "protocol": "current_final_full4_anchor_object_propainter",
         })
-        (output_root / "training_clips.json").write_text(
-            json.dumps({"clips": completed}, indent=2), encoding="utf-8"
+        (output_root / f"{args.purpose}_clips.json").write_text(
+            json.dumps({"purpose": args.purpose, "clips": completed}, indent=2),
+            encoding="utf-8"
         )
 
     print(json.dumps({"completed": len(completed), "root": str(output_root)}), flush=True)

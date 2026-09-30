@@ -281,9 +281,29 @@ def main() -> None:
                         full_pose = head_transform @ initial_pose
                         delta_position = full_pose[:3, 3] - initial_pose[:3, 3]
                         delta_rotation = full_pose[:3, :3] @ initial_pose[:3, :3].T
+                        predicted = (
+                            source @ head_transform[:3, :3].T
+                            + head_transform[:3, 3]
+                        )
+                        inlier_residuals = np.linalg.norm(
+                            predicted[inliers] - target[inliers], axis=1
+                        )
+                        inlier_ratio = float(inliers.sum() / len(common))
+                        view_factor = min(1.0, detected_views[time_index] / 2.0)
+                        residual_factor = float(np.exp(
+                            -float(inlier_residuals.mean())
+                            / max(args.ransac_threshold_m, 1e-6)
+                        ))
                         record.update(
                             {
                                 "ransac_inliers": int(inliers.sum()),
+                                "inlier_residual_mean_m": float(inlier_residuals.mean()),
+                                "inlier_residual_p95_m": float(
+                                    np.percentile(inlier_residuals, 95)
+                                ),
+                                "pose_confidence": float(
+                                    inlier_ratio * view_factor * residual_factor
+                                ),
                                 # Keep the exo-only rigid head transform itself.  The
                                 # legacy camera deltas below are convenient when the
                                 # true initial ego pose is known, but their translation

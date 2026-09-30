@@ -16,11 +16,17 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import numpy as np
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from h2o_physics_baseline.protocols import LAYERED_CONTRACT_VERSION
+
+
 INDEX = PROJECT_ROOT / "datasets/H2O/oracle_state/paired_physical_clips.csv"
 DETECTION_PYTHON = PROJECT_ROOT / "envs/h2o-detection/bin/python"
 VIDEO_PYTHON = PROJECT_ROOT / "envs/propainter/bin/python"
@@ -73,6 +79,21 @@ def head_ready(path: Path, pair: str, frames: set[int]) -> bool:
         record.get("pair_id") == pair
         and set(int(value) for value in record.get("frames", [])) == frames
         and len(record.get("future", [])) == len(frames) - 1
+    )
+
+
+def layered_ready(model_input: Path, pair_id: str) -> bool:
+    manifest_path = model_input / "manifest.json"
+    if png_count(model_input / "input_frames") != 64 or not manifest_path.exists():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    contract = manifest.get("input_contract", {})
+    return (
+        manifest.get("pair_id") == pair_id
+        and contract.get("version") == LAYERED_CONTRACT_VERSION
     )
 
 
@@ -206,17 +227,20 @@ def main() -> None:
         for variant in variants:
             destination = scene_root / variant["name"]
             model_input = destination / "model_input"
-            if png_count(model_input / "input_frames") != 64:
+            if not layered_ready(model_input, pair):
                 command = [
                     str(VIDEO_PYTHON),
                     "h2o_physics_baseline/render_causal_video_background_split.py",
+                    "--index", str(INDEX),
                     "--pair-id", pair, "--head-summary", str(variant["head"]),
                     "--student-state-root", str(variant["hand"]),
                     "--arm-state-root", str(variant["arm"]),
                     "--initial-hand-mask-root", str(variant["mask"]),
+                    "--object-state-root", str(INDEX.parent),
                     "--source-camera-indices", str(variant["source"]),
                     "--state-camera-indices", str(variant["state"]),
                     "--source-feather-radius", "2", "--source-color-align",
+                    "--causal-motion-masks",
                     "--model-input-root", str(model_input),
                     "--output", str(destination / "layered.mp4"),
                 ]
