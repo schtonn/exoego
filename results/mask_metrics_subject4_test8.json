@@ -1,0 +1,306 @@
+{
+  "evaluation_only": true,
+  "clips": [
+    {
+      "pair_id": "subject4_h1_0_000000_000063_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.043747901916503906,
+      "mean_visible_object_fraction": 0.015446186065673828,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 183492,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 64786,
+        "predicted_pixels": 65888,
+        "intersection_pixels": 47507,
+        "precision": 0.7210265905779505,
+        "recall": 0.7332911431482111,
+        "f1": 0.7271071521496243
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.5506398099099689,
+        "hand_proxy_fraction_of_arm_envelope": 0.3841091828394381,
+        "hand_true_pixels": 183492,
+        "arm_predicted_pixels": 263045,
+        "intersection_pixels": 101038
+      }
+    },
+    {
+      "pair_id": "subject4_h2_3_000384_000447_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.041007041931152344,
+      "mean_visible_object_fraction": 0.005579471588134766,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 171996,
+        "predicted_pixels": 186231,
+        "intersection_pixels": 129730,
+        "precision": 0.6966079761156843,
+        "recall": 0.7542617270169074,
+        "f1": 0.7242893472574653
+      },
+      "visible_object_metrics": {
+        "true_pixels": 23402,
+        "predicted_pixels": 28970,
+        "intersection_pixels": 10868,
+        "precision": 0.3751467034863652,
+        "recall": 0.4644047517306213,
+        "f1": 0.41503093255938284
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.6720679550687225,
+        "hand_proxy_fraction_of_arm_envelope": 0.42908050201004466,
+        "hand_true_pixels": 171996,
+        "arm_predicted_pixels": 269397,
+        "intersection_pixels": 115593
+      }
+    },
+    {
+      "pair_id": "subject4_k1_4_000160_000223_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.04540133476257324,
+      "mean_visible_object_fraction": 0.01143336296081543,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 190427,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 47955,
+        "predicted_pixels": 46079,
+        "intersection_pixels": 22691,
+        "precision": 0.4924369018424879,
+        "recall": 0.47317276613491815,
+        "f1": 0.48261267201225094
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.3829288913862005,
+        "hand_proxy_fraction_of_arm_envelope": 0.5148372247364742,
+        "hand_true_pixels": 190427,
+        "arm_predicted_pixels": 141637,
+        "intersection_pixels": 72920
+      }
+    },
+    {
+      "pair_id": "subject4_k2_4_000160_000223_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.04690861701965332,
+      "mean_visible_object_fraction": 0.003986358642578125,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 196749,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 16720,
+        "predicted_pixels": 75685,
+        "intersection_pixels": 15079,
+        "precision": 0.1992336658518861,
+        "recall": 0.901854066985646,
+        "f1": 0.32636762079974024
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.4406324809783023,
+        "hand_proxy_fraction_of_arm_envelope": 0.49556985903577266,
+        "hand_true_pixels": 196749,
+        "arm_predicted_pixels": 174938,
+        "intersection_pixels": 86694
+      }
+    },
+    {
+      "pair_id": "subject4_k2_5_000000_000063_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.04360485076904297,
+      "mean_visible_object_fraction": 0.00458526611328125,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 182892,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 19232,
+        "predicted_pixels": 29361,
+        "intersection_pixels": 11782,
+        "precision": 0.4012806103334355,
+        "recall": 0.6126247920133111,
+        "f1": 0.48492581235980486
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.45092732322900947,
+        "hand_proxy_fraction_of_arm_envelope": 0.47272154075432765,
+        "hand_true_pixels": 182892,
+        "arm_predicted_pixels": 174460,
+        "intersection_pixels": 82471
+      }
+    },
+    {
+      "pair_id": "subject4_o1_5_000320_000383_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.05563545227050781,
+      "mean_visible_object_fraction": 0.010454654693603516,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 233352,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 43850,
+        "predicted_pixels": 51107,
+        "intersection_pixels": 34733,
+        "precision": 0.67961336020506,
+        "recall": 0.7920866590649943,
+        "f1": 0.7315521762481967
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.42464602831773457,
+        "hand_proxy_fraction_of_arm_envelope": 0.3642900733050505,
+        "hand_true_pixels": 233352,
+        "arm_predicted_pixels": 272014,
+        "intersection_pixels": 99092
+      }
+    },
+    {
+      "pair_id": "subject4_o1_7_000000_000063_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.0414273738861084,
+      "mean_visible_object_fraction": 0.007909536361694336,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 173759,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 33175,
+        "predicted_pixels": 41000,
+        "intersection_pixels": 22956,
+        "precision": 0.5599024390243903,
+        "recall": 0.6919668425018839,
+        "f1": 0.6189686552072801
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.5913132557162507,
+        "hand_proxy_fraction_of_arm_envelope": 0.5647743013566104,
+        "hand_true_pixels": 173759,
+        "arm_predicted_pixels": 181924,
+        "intersection_pixels": 102746
+      }
+    },
+    {
+      "pair_id": "subject4_o2_2_000064_000127_cam0_to_cam4",
+      "evaluation_only": true,
+      "hand_reference": "mesh proxy projected from annotated cam4 hand joints",
+      "object_reference": "annotated CAD silhouette filtered by cam4 observed-depth agreement",
+      "object_depth_tolerance_m": 0.025,
+      "mean_hand_fraction": 0.04159188270568848,
+      "mean_visible_object_fraction": 0.0057027339935302734,
+      "hand_mesh_proxy_metrics": {
+        "true_pixels": 174449,
+        "predicted_pixels": 0,
+        "intersection_pixels": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "visible_object_metrics": {
+        "true_pixels": 23919,
+        "predicted_pixels": 29617,
+        "intersection_pixels": 13027,
+        "precision": 0.4398487355235169,
+        "recall": 0.5446297922153936,
+        "f1": 0.486663179916318
+      },
+      "arm_envelope_audit": {
+        "arm_reference_available": false,
+        "reason": "H2O cam4 hand joints define a hand proxy but not a forearm silhouette; arm-mask IoU against the hand proxy is invalid.",
+        "hand_proxy_recall_inside_arm_envelope": 0.5473060894588103,
+        "hand_proxy_fraction_of_arm_envelope": 0.2926928712883428,
+        "hand_true_pixels": 174449,
+        "arm_predicted_pixels": 326202,
+        "intersection_pixels": 95477
+      }
+    }
+  ],
+  "pooled_hand_mesh_proxy": {
+    "true_pixels": 1507116,
+    "predicted_pixels": 186231,
+    "intersection_pixels": 129730,
+    "precision": 0.6966079761156843,
+    "recall": 0.0860783111585306,
+    "f1": 0.15322317280510137
+  },
+  "pooled_visible_object": {
+    "true_pixels": 273039,
+    "predicted_pixels": 367707,
+    "intersection_pixels": 178643,
+    "precision": 0.48582975031750825,
+    "recall": 0.6542764952992064,
+    "f1": 0.5576094115296857
+  },
+  "pooled_arm_envelope_audit": {
+    "arm_reference_available": false,
+    "hand_proxy_recall_inside_arm_envelope": 0.5016408823209362,
+    "hand_proxy_fraction_of_arm_envelope": 0.41917491352099695,
+    "hand_true_pixels": 1507116,
+    "arm_predicted_pixels": 1803617,
+    "intersection_pixels": 756031
+  },
+  "interpretation": {
+    "hand": "precision/recall compares exo-estimated hand-joint mesh with the same cam4 annotated hand-joint mesh proxy",
+    "arm": "no forearm silhouette reference exists; arm IoU is intentionally not reported",
+    "object": "precision/recall uses visible CAD support filtered by cam4 depth"
+  }
+}
