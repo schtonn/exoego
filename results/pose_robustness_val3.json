@@ -1,0 +1,644 @@
+{
+  "protocol": {
+    "scenes": 3,
+    "seeds": [
+      11,
+      17,
+      29
+    ],
+    "frame_step": 8,
+    "rotation_noise_deg": 3.0,
+    "translation_noise_m": 0.03,
+    "drift": "linear from zero to the same 3deg+0.03m endpoint",
+    "head_rotation_scale": 1.0,
+    "calibrated_render_composition": true
+  },
+  "deployed_estimator_error_distribution": {
+    "rotation_deg": {
+      "mean": 0.9785001638201088,
+      "median": 0.7608662971417242,
+      "p90": 1.8940699253705964,
+      "max": 3.4481154759125094
+    },
+    "translation_m": {
+      "mean": 0.004470063450334721,
+      "median": 0.0037353467860693408,
+      "p90": 0.009189574860758084,
+      "max": 0.013045501788594366
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "l1": {
+        "mean": 0.0587783952554067,
+        "std": 0.0031339238055992993
+      },
+      "delta_l1": {
+        "mean": 0.05546625703573227,
+        "std": 0.009159102881113722
+      }
+    },
+    "rotation": {
+      "l1": {
+        "mean": 0.08255664414415757,
+        "std": 0.022781557077796173
+      },
+      "delta_l1": {
+        "mean": 0.06110486201941967,
+        "std": 0.008247180691550773
+      }
+    },
+    "translation": {
+      "l1": {
+        "mean": 0.07305777228126924,
+        "std": 0.015306074062877298
+      },
+      "delta_l1": {
+        "mean": 0.05923944711685181,
+        "std": 0.008516156526836577
+      }
+    },
+    "drift": {
+      "l1": {
+        "mean": 0.07504479742298524,
+        "std": 0.018505237689438264
+      },
+      "delta_l1": {
+        "mean": 0.06307966200013955,
+        "std": 0.011109214002451616
+      }
+    }
+  },
+  "runs": [
+    {
+      "scene": "subject3_h1_0",
+      "condition": "baseline",
+      "l1": 0.06047496199607849,
+      "delta_l1": 0.045019835233688354,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.18881711923692265,
+          -0.19839032737660414,
+          0.9617636786063786
+        ],
+        "translation_direction": [
+          0.16021416297716448,
+          -0.818128926665578,
+          0.5522648652001644
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "rotation_seed11",
+      "l1": 0.09647344797849655,
+      "delta_l1": 0.052626870572566986,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "translation_seed11",
+      "l1": 0.07319888472557068,
+      "delta_l1": 0.050444096326828,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "drift_seed11",
+      "l1": 0.07583483308553696,
+      "delta_l1": 0.05042751133441925,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "rotation_seed17",
+      "l1": 0.10363423824310303,
+      "delta_l1": 0.055996112525463104,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "translation_seed17",
+      "l1": 0.08592846244573593,
+      "delta_l1": 0.05408401042222977,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "drift_seed17",
+      "l1": 0.09594850987195969,
+      "delta_l1": 0.06534864008426666,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "rotation_seed29",
+      "l1": 0.11463436484336853,
+      "delta_l1": 0.054605454206466675,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "translation_seed29",
+      "l1": 0.0702643170952797,
+      "delta_l1": 0.04734870418906212,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h1_0",
+      "condition": "drift_seed29",
+      "l1": 0.09413951635360718,
+      "delta_l1": 0.05812299996614456,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "baseline",
+      "l1": 0.06069827452301979,
+      "delta_l1": 0.062118932604789734,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.18881711923692265,
+          -0.19839032737660414,
+          0.9617636786063786
+        ],
+        "translation_direction": [
+          0.16021416297716448,
+          -0.818128926665578,
+          0.5522648652001644
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "rotation_seed11",
+      "l1": 0.0929948091506958,
+      "delta_l1": 0.06875978410243988,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "translation_seed11",
+      "l1": 0.09034314006567001,
+      "delta_l1": 0.0683676227927208,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "drift_seed11",
+      "l1": 0.0760645940899849,
+      "delta_l1": 0.07059229165315628,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "rotation_seed17",
+      "l1": 0.11008533835411072,
+      "delta_l1": 0.07167698442935944,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "translation_seed17",
+      "l1": 0.10488393157720566,
+      "delta_l1": 0.07130935043096542,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "drift_seed17",
+      "l1": 0.10942430049180984,
+      "delta_l1": 0.08700476586818695,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "rotation_seed29",
+      "l1": 0.10333018749952316,
+      "delta_l1": 0.07381442934274673,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "translation_seed29",
+      "l1": 0.08511201292276382,
+      "delta_l1": 0.06906057894229889,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_h2_3",
+      "condition": "drift_seed29",
+      "l1": 0.09086236357688904,
+      "delta_l1": 0.07649966329336166,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "baseline",
+      "l1": 0.05516194924712181,
+      "delta_l1": 0.05926000326871872,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.18881711923692265,
+          -0.19839032737660414,
+          0.9617636786063786
+        ],
+        "translation_direction": [
+          0.16021416297716448,
+          -0.818128926665578,
+          0.5522648652001644
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "rotation_seed11",
+      "l1": 0.06116543337702751,
+      "delta_l1": 0.06262596696615219,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "translation_seed11",
+      "l1": 0.06353230029344559,
+      "delta_l1": 0.06087281554937363,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "drift_seed11",
+      "l1": 0.05820281803607941,
+      "delta_l1": 0.059969909489154816,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.018681436816318283,
+          0.742906754880426,
+          0.669134184952101
+        ],
+        "translation_direction": [
+          -0.6442915638816851,
+          -0.3762033705437209,
+          -0.6658523895747738
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "rotation_seed17",
+      "l1": 0.06940034031867981,
+      "delta_l1": 0.06301751732826233,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "translation_seed17",
+      "l1": 0.06821627169847488,
+      "delta_l1": 0.06284765899181366,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "drift_seed17",
+      "l1": 0.06845369935035706,
+      "delta_l1": 0.06204232573509216,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          0.8655316888210953,
+          0.26598836044299073,
+          -0.42438789774845376
+        ],
+        "translation_direction": [
+          -0.5538175648534376,
+          -0.832597752785772,
+          0.008190660284188366
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "rotation_seed29",
+      "l1": 0.06262638419866562,
+      "delta_l1": 0.0637364536523819,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "translation_seed29",
+      "l1": 0.058878760784864426,
+      "delta_l1": 0.06013975664973259,
+      "pose_noise_parameters": {
+        "mode": "systematic",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    },
+    {
+      "scene": "subject3_k1_4",
+      "condition": "drift_seed29",
+      "l1": 0.05527174845337868,
+      "delta_l1": 0.060549065470695496,
+      "pose_noise_parameters": {
+        "mode": "linear_drift",
+        "rotation_axis": [
+          -0.915189616445357,
+          0.11658624429545675,
+          -0.3857921896457732
+        ],
+        "translation_direction": [
+          -0.582749642144412,
+          0.2172382728772778,
+          -0.7830775104533759
+        ]
+      }
+    }
+  ]
+}
