@@ -44,6 +44,7 @@ FACE_MODEL = WORKSPACE_ROOT / "models/mediapipe/face_landmarker.task"
 POSE_MODEL = WORKSPACE_ROOT / "models/mediapipe/pose_landmarker_full.task"
 HAND_MODEL = WORKSPACE_ROOT / "models/mediapipe/hand_landmarker.task"
 RAW_ROOT = WORKSPACE_ROOT / "datasets/H2O/raw"
+PROPAINTER_SCRIPT = WORKSPACE_ROOT / "third_party/ProPainter/inference_propainter.py"
 
 DEFAULT_PAIRS = (
     "subject1_h1_0_000000_000063_cam0_to_cam4",
@@ -271,7 +272,7 @@ def main() -> None:
         # output directory still happens to contain 64 files.
         if layers_updated or png_count(proposal_frames, digits=4) != 64:
             run([
-                str(VIDEO_PYTHON), "third_party/ProPainter/inference_propainter.py",
+                str(VIDEO_PYTHON), str(PROPAINTER_SCRIPT),
                 "-i", str(model_input / "input_frames"),
                 "-m", str(model_input / "repair_masks"),
                 "-o", str(proposal_root), "--width", "256", "--height", "256",
