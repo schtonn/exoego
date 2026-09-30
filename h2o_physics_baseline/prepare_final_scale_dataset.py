@@ -106,6 +106,20 @@ def png_count(path: Path, digits: int = 6) -> int:
     ) if path.is_dir() else 0
 
 
+def png_set_is_fresh(
+    path: Path, reference: Path, expected: int, digits: int = 6,
+) -> bool:
+    files = [
+        item for item in path.glob("*.png")
+        if len(item.stem) == digits
+    ] if path.is_dir() else []
+    return (
+        len(files) == expected
+        and reference.exists()
+        and min(item.stat().st_mtime for item in files) >= reference.stat().st_mtime
+    )
+
+
 def layered_ready(
     model_input: Path, pair_id: str,
     pose_confidence_calibration: Path | None = None,
@@ -270,7 +284,10 @@ def main() -> None:
         proposal_frames = proposal_root / "input_frames/frames"
         # A layer rebuild changes the ProPainter inputs even when the stale
         # output directory still happens to contain 64 files.
-        if layers_updated or png_count(proposal_frames, digits=4) != 64:
+        manifest_path = model_input / "manifest.json"
+        if layers_updated or not png_set_is_fresh(
+            proposal_frames, manifest_path, 64, digits=4
+        ):
             run([
                 str(VIDEO_PYTHON), str(PROPAINTER_SCRIPT),
                 "-i", str(model_input / "input_frames"),
@@ -279,7 +296,10 @@ def main() -> None:
                 "--save_frames", "--fp16", "--save_fps", "15",
             ], video_environment)
         composed_root = destination / "propainter_composed"
-        if layers_updated or png_count(composed_root / "frames") != 64:
+        proposal_reference = max(proposal_frames.glob("*.png"), key=lambda path: path.stat().st_mtime)
+        if layers_updated or not png_set_is_fresh(
+            composed_root / "frames", proposal_reference, 64
+        ):
             run([
                 str(VIDEO_PYTHON), "h2o_physics_baseline/compose_propainter_repair.py",
                 "--model-input-root", str(model_input),
