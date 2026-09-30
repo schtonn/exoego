@@ -1,0 +1,319 @@
+{
+  "clips": [
+    {
+      "pair_id": "subject4_h1_0_000000_000063_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.09114649891853333,
+          "authorized_l1": 0.1449039727449417,
+          "delta_l1": 0.029181651771068573,
+          "acceleration_l1": 0.047197215259075165,
+          "outside_hard_authorization_max_change": 0.3960784077644348,
+          "evaluation_region_l1": 0.1783744990825653,
+          "evaluation_region_fraction": 0.015446186065673828
+        },
+        "propainter_only": {
+          "l1": 0.09559166431427002,
+          "authorized_l1": 0.17362956702709198,
+          "delta_l1": 0.027381818741559982,
+          "acceleration_l1": 0.04378768429160118,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.17841365933418274,
+          "evaluation_region_fraction": 0.015446186065673828
+        },
+        "accepted_final": {
+          "l1": 0.09559166431427002,
+          "authorized_l1": 0.17362956702709198,
+          "delta_l1": 0.027381818741559982,
+          "acceleration_l1": 0.04378768429160118,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.17841365933418274,
+          "evaluation_region_fraction": 0.015446186065673828
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_h2_3_000384_000447_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.10727634280920029,
+          "authorized_l1": 0.17854280769824982,
+          "delta_l1": 0.020878586918115616,
+          "acceleration_l1": 0.02939448319375515,
+          "outside_hard_authorization_max_change": 0.30980390310287476,
+          "evaluation_region_l1": 0.22467012703418732,
+          "evaluation_region_fraction": 0.005579471588134766
+        },
+        "propainter_only": {
+          "l1": 0.11363857984542847,
+          "authorized_l1": 0.20481400191783905,
+          "delta_l1": 0.02208159677684307,
+          "acceleration_l1": 0.03141598403453827,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.2246742695569992,
+          "evaluation_region_fraction": 0.005579471588134766
+        },
+        "accepted_final": {
+          "l1": 0.11363857984542847,
+          "authorized_l1": 0.20481400191783905,
+          "delta_l1": 0.02208159677684307,
+          "acceleration_l1": 0.03141598403453827,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.2246742695569992,
+          "evaluation_region_fraction": 0.005579471588134766
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k1_4_000160_000223_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.06594637781381607,
+          "authorized_l1": 0.08076753467321396,
+          "delta_l1": 0.019625341519713402,
+          "acceleration_l1": 0.02857394888997078,
+          "outside_hard_authorization_max_change": 0.26274511218070984,
+          "evaluation_region_l1": 0.20951852202415466,
+          "evaluation_region_fraction": 0.01143336296081543
+        },
+        "propainter_only": {
+          "l1": 0.0686979666352272,
+          "authorized_l1": 0.09364042431116104,
+          "delta_l1": 0.019720518961548805,
+          "acceleration_l1": 0.02866050973534584,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.20941080152988434,
+          "evaluation_region_fraction": 0.01143336296081543
+        },
+        "accepted_final": {
+          "l1": 0.0686979666352272,
+          "authorized_l1": 0.09364042431116104,
+          "delta_l1": 0.019720518961548805,
+          "acceleration_l1": 0.02866050973534584,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.20941080152988434,
+          "evaluation_region_fraction": 0.01143336296081543
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k2_4_000160_000223_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.04989534988999367,
+          "authorized_l1": 0.07330381125211716,
+          "delta_l1": 0.019474685192108154,
+          "acceleration_l1": 0.031217802315950394,
+          "outside_hard_authorization_max_change": 0.43529412150382996,
+          "evaluation_region_l1": 0.16782405972480774,
+          "evaluation_region_fraction": 0.003986358642578125
+        },
+        "propainter_only": {
+          "l1": 0.056017618626356125,
+          "authorized_l1": 0.10206486284732819,
+          "delta_l1": 0.019020821899175644,
+          "acceleration_l1": 0.030299652367830276,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.16891750693321228,
+          "evaluation_region_fraction": 0.003986358642578125
+        },
+        "accepted_final": {
+          "l1": 0.056017618626356125,
+          "authorized_l1": 0.10206486284732819,
+          "delta_l1": 0.019020821899175644,
+          "acceleration_l1": 0.030299652367830276,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.16891750693321228,
+          "evaluation_region_fraction": 0.003986358642578125
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k2_5_000000_000063_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.07533261179924011,
+          "authorized_l1": 0.08317580074071884,
+          "delta_l1": 0.02259516343474388,
+          "acceleration_l1": 0.03221999108791351,
+          "outside_hard_authorization_max_change": 0.345098078250885,
+          "evaluation_region_l1": 0.2457219362258911,
+          "evaluation_region_fraction": 0.00458526611328125
+        },
+        "propainter_only": {
+          "l1": 0.07606808841228485,
+          "authorized_l1": 0.086411252617836,
+          "delta_l1": 0.02278081700205803,
+          "acceleration_l1": 0.032519903033971786,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.2457217276096344,
+          "evaluation_region_fraction": 0.00458526611328125
+        },
+        "accepted_final": {
+          "l1": 0.07606808841228485,
+          "authorized_l1": 0.086411252617836,
+          "delta_l1": 0.02278081700205803,
+          "acceleration_l1": 0.032519903033971786,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.2457217276096344,
+          "evaluation_region_fraction": 0.00458526611328125
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o1_5_000320_000383_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.0955466628074646,
+          "authorized_l1": 0.15555399656295776,
+          "delta_l1": 0.03620211035013199,
+          "acceleration_l1": 0.05313669145107269,
+          "outside_hard_authorization_max_change": 0.545098066329956,
+          "evaluation_region_l1": 0.18980126082897186,
+          "evaluation_region_fraction": 0.010454654693603516
+        },
+        "propainter_only": {
+          "l1": 0.09316429495811462,
+          "authorized_l1": 0.1455133557319641,
+          "delta_l1": 0.03425408527255058,
+          "acceleration_l1": 0.049420829862356186,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.18701861798763275,
+          "evaluation_region_fraction": 0.010454654693603516
+        },
+        "accepted_final": {
+          "l1": 0.09316429495811462,
+          "authorized_l1": 0.1455133557319641,
+          "delta_l1": 0.03425408527255058,
+          "acceleration_l1": 0.049420829862356186,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.18701861798763275,
+          "evaluation_region_fraction": 0.010454654693603516
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o1_7_000000_000063_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.09416311979293823,
+          "authorized_l1": 0.1333453357219696,
+          "delta_l1": 0.03842129185795784,
+          "acceleration_l1": 0.05830629914999008,
+          "outside_hard_authorization_max_change": 0.5647059082984924,
+          "evaluation_region_l1": 0.2565189003944397,
+          "evaluation_region_fraction": 0.007909536361694336
+        },
+        "propainter_only": {
+          "l1": 0.08266913890838623,
+          "authorized_l1": 0.09359215199947357,
+          "delta_l1": 0.035777390003204346,
+          "acceleration_l1": 0.05335797369480133,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.25620537996292114,
+          "evaluation_region_fraction": 0.007909536361694336
+        },
+        "accepted_final": {
+          "l1": 0.08266913890838623,
+          "authorized_l1": 0.09359215199947357,
+          "delta_l1": 0.035777390003204346,
+          "acceleration_l1": 0.05335797369480133,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.25620537996292114,
+          "evaluation_region_fraction": 0.007909536361694336
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o2_2_000064_000127_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.08568653464317322,
+          "authorized_l1": 0.14996187388896942,
+          "delta_l1": 0.017994701862335205,
+          "acceleration_l1": 0.02459358610212803,
+          "outside_hard_authorization_max_change": 0.32549017667770386,
+          "evaluation_region_l1": 0.17467662692070007,
+          "evaluation_region_fraction": 0.0057027339935302734
+        },
+        "propainter_only": {
+          "l1": 0.08857815712690353,
+          "authorized_l1": 0.15989767014980316,
+          "delta_l1": 0.018866045400500298,
+          "acceleration_l1": 0.026011589914560318,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.1746133416891098,
+          "evaluation_region_fraction": 0.0057027339935302734
+        },
+        "accepted_final": {
+          "l1": 0.08857815712690353,
+          "authorized_l1": 0.15989767014980316,
+          "delta_l1": 0.018866045400500298,
+          "acceleration_l1": 0.026011589914560318,
+          "outside_hard_authorization_max_change": 0.0,
+          "evaluation_region_l1": 0.1746133416891098,
+          "evaluation_region_fraction": 0.0057027339935302734
+        }
+      }
+    }
+  ],
+  "equal_clip_average": {
+    "fusion_off": {
+      "l1": 0.08312418730929494,
+      "authorized_l1": 0.12494439166039228,
+      "delta_l1": 0.025546691613271832,
+      "acceleration_l1": 0.038080002181231976,
+      "outside_hard_authorization_max_change": 0.39803922176361084,
+      "evaluation_region_l1": 0.20588824152946472,
+      "evaluation_region_fraction": 0.00813719630241394
+    },
+    "propainter_only": {
+      "l1": 0.08430318860337138,
+      "authorized_l1": 0.13244541082531214,
+      "delta_l1": 0.024985386757180095,
+      "acceleration_l1": 0.03693426586687565,
+      "outside_hard_authorization_max_change": 0.0,
+      "evaluation_region_l1": 0.20562191307544708,
+      "evaluation_region_fraction": 0.00813719630241394
+    },
+    "accepted_final": {
+      "l1": 0.08430318860337138,
+      "authorized_l1": 0.13244541082531214,
+      "delta_l1": 0.024985386757180095,
+      "acceleration_l1": 0.03693426586687565,
+      "outside_hard_authorization_max_change": 0.0,
+      "evaluation_region_l1": 0.20562191307544708,
+      "evaluation_region_fraction": 0.00813719630241394
+    }
+  },
+  "equal_clip_sample_std": {
+    "fusion_off": {
+      "l1": 0.018479204817531784,
+      "authorized_l1": 0.040120412857326336,
+      "delta_l1": 0.008035396100184684,
+      "acceleration_l1": 0.012806509394307717,
+      "outside_hard_authorization_max_change": 0.11016348674207657,
+      "evaluation_region_l1": 0.03371089015286261,
+      "evaluation_region_fraction": 0.00400040555510299
+    },
+    "propainter_only": {
+      "l1": 0.017723563169931882,
+      "authorized_l1": 0.04458582340664053,
+      "delta_l1": 0.006783933983340782,
+      "acceleration_l1": 0.010380874059685252,
+      "outside_hard_authorization_max_change": 0.0,
+      "evaluation_region_l1": 0.03367734889613012,
+      "evaluation_region_fraction": 0.00400040555510299
+    },
+    "accepted_final": {
+      "l1": 0.017723563169931882,
+      "authorized_l1": 0.04458582340664053,
+      "delta_l1": 0.006783933983340782,
+      "acceleration_l1": 0.010380874059685252,
+      "outside_hard_authorization_max_change": 0.0,
+      "evaluation_region_l1": 0.03367734889613012,
+      "evaluation_region_fraction": 0.00400040555510299
+    }
+  },
+  "accepted_final_selection": "validation early stopping selected epoch 0; exact constrained ProPainter proposal retained"
+}

@@ -29,10 +29,15 @@ def mask(path: Path) -> torch.Tensor:
     return torch.from_numpy(np.asarray(Image.open(path).convert("L")) > 127)[None]
 
 
-def clip_tensors(root: Path, index: Path) -> dict[str, torch.Tensor | str]:
-    clip = discover_clip(root, index)
+def clip_tensors(
+    root: Path,
+    index: Path,
+    require_full_protocol: bool = True,
+    region_mask_root: Path | None = None,
+) -> dict[str, torch.Tensor | str]:
+    clip = discover_clip(root, index, require_full_protocol=require_full_protocol)
     manifest = json.loads((root / "model_input/manifest.json").read_text())
-    base, proposal, target, authorization = [], [], [], []
+    base, proposal, target, authorization, evaluation_region = [], [], [], [], []
     for record in manifest["frames"]:
         i = int(record["index"])
         name = f"{i:06d}.png"
@@ -43,12 +48,20 @@ def clip_tensors(root: Path, index: Path) -> dict[str, torch.Tensor | str]:
         foreground = mask(root / "model_input/foreground_masks" / name)
         physical_object = mask(root / "model_input/object_masks" / name)
         authorization.append(repair & (~foreground) & (~physical_object))
+        if region_mask_root is not None:
+            region_name = f"{int(record['dataset_frame']):06d}.png"
+            evaluation_region.append(
+                mask(region_mask_root / root.parent.name / "object" / region_name)
+            )
     return {
         "pair_id": clip.pair_id,
         "base": torch.stack(base),
         "current": torch.stack(proposal),
         "target": torch.stack(target),
         "authorized": torch.stack(authorization),
+        "evaluation_region": (
+            torch.stack(evaluation_region) if evaluation_region else None
+        ),
     }
 
 
@@ -64,7 +77,7 @@ def metrics(output: torch.Tensor, data: dict[str, torch.Tensor | str]) -> dict[s
     delta_target = target[1:] - target[:-1]
     accel_output = delta_output[1:] - delta_output[:-1]
     accel_target = delta_target[1:] - delta_target[:-1]
-    return {
+    result = {
         "l1": float(absolute.mean()),
         "authorized_l1": float((absolute * authorized).sum() / denominator),
         "delta_l1": float((delta_output - delta_target).abs().mean()),
@@ -76,6 +89,14 @@ def metrics(output: torch.Tensor, data: dict[str, torch.Tensor | str]) -> dict[s
             ((output - current).abs() * (1 - authorized)).max()
         ),
     }
+    evaluation_region = data.get("evaluation_region")
+    if isinstance(evaluation_region, torch.Tensor):
+        region = evaluation_region.float()
+        result["evaluation_region_l1"] = float(
+            (absolute * region).sum() / (region.sum() * 3).clamp_min(1)
+        )
+        result["evaluation_region_fraction"] = float(region.mean())
+    return result
 
 
 def main() -> None:
@@ -93,6 +114,16 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--index", type=Path, default=Path("datasets/H2O/oracle_state/paired_physical_clips.csv"))
     parser.add_argument("--device", default="cuda")
+    parser.add_argument(
+        "--region-mask-root",
+        type=Path,
+        help="Optional evaluation-mask root used for visible-object-region L1.",
+    )
+    parser.add_argument(
+        "--allow-reduced-protocol",
+        action="store_true",
+        help="Evaluate a manifest-declared ablation such as no annotated object.",
+    )
     args = parser.parse_args()
     checkpoints = {}
     for specification in args.checkpoint:
@@ -101,7 +132,12 @@ def main() -> None:
     device = torch.device(args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu")
     per_clip = []
     for root in args.clip_root:
-        data = clip_tensors(root, args.index)
+        data = clip_tensors(
+            root,
+            args.index,
+            require_full_protocol=not args.allow_reduced_protocol,
+            region_mask_root=args.region_mask_root,
+        )
         record = {"pair_id": data["pair_id"], "models": {}}
         # Spell out the controls in the result file: these are the two
         # ablations reviewers otherwise have to infer from implementation
