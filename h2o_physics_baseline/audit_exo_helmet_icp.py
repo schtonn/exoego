@@ -133,6 +133,9 @@ def pose_errors(poses: list[np.ndarray], truth: list[np.ndarray]) -> dict[str, f
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sequence", required=True)
+    parser.add_argument(
+        "--dataset-root", type=Path, default=Path("datasets/H2O/raw")
+    )
     parser.add_argument("--start-frame", type=int, required=True)
     parser.add_argument("--end-frame", type=int, required=True)
     parser.add_argument("--pair-id", required=True)
@@ -145,7 +148,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    root = Path("datasets/H2O/raw") / args.sequence
+    root = args.dataset_root / args.sequence
     sources = [root / f"cam{index}" for index in range(4)]
     target = root / "cam4"
     frames = list(range(args.start_frame, args.end_frame + 1))

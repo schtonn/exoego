@@ -145,7 +145,10 @@ def discover_clip(
         dataset_frames=frames,
         split=rows[0]["split"],
         pose_confidences=tuple(
-            float(record.get("predicted_camera_pose_confidence", 1.0))
+            float(record.get(
+                "calibrated_camera_pose_reliability",
+                record.get("predicted_camera_pose_confidence", 1.0),
+            ))
             for record in manifest["frames"]
         ),
     )

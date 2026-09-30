@@ -40,6 +40,136 @@ from audit_exo_head_motion import (
 
 # Stable facial outline / eye / nose landmarks; mouth points are deliberately omitted.
 FACE_LANDMARKS = (1, 10, 33, 133, 152, 234, 263, 362, 454)
+# Selected once on the three-scene validation audit.  Larger inferred motion
+# has measurably larger target-camera pose error even when face-fit residuals
+# stay small, so it must lower transport confidence rather than being treated
+# as equally trustworthy.
+MOTION_ROTATION_RISK_SCALE_DEG = 10.0
+MOTION_TRANSLATION_RISK_SCALE_M = 0.01
+
+
+def temporal_smooth(values: np.ndarray, radius: int = 4) -> np.ndarray:
+    """Mirror the deployed render trajectory smoothing without importing Torch."""
+    flat = values.astype(np.float64).reshape(len(values), -1).copy()
+    for channel in range(flat.shape[1]):
+        series = flat[:, channel]
+        finite = np.isfinite(series)
+        if not np.any(finite):
+            series[:] = 0
+        elif not np.all(finite):
+            series[~finite] = np.interp(
+                np.flatnonzero(~finite), np.flatnonzero(finite), series[finite]
+            )
+        robust = np.asarray([
+            np.median(series[max(0, index - radius) : min(len(series), index + radius + 1)])
+            for index in range(len(series))
+        ])
+        weights = np.arange(1, radius + 2, dtype=np.float64)
+        weights = np.concatenate((weights, weights[-2::-1]))
+        flat[:, channel] = np.convolve(
+            np.pad(robust, radius, mode="edge"), weights / weights.sum(), mode="valid"
+        )
+    return flat.reshape(values.shape).astype(np.float32)
+
+
+def deployed_pose_map(
+    frames: list[int], initial_pose: np.ndarray, clip_record: dict,
+    rotation_scale: float,
+) -> dict[int, np.ndarray]:
+    records = {int(value["frame"]): value for value in clip_record["future"]}
+    translations = [np.zeros(3, dtype=np.float64)]
+    rotations = [np.eye(3, dtype=np.float64)]
+    for frame in frames[1:]:
+        motion = records[frame]
+        if "estimated_head_transform_world" in motion:
+            moved = np.asarray(motion["estimated_head_transform_world"]) @ initial_pose
+            translations.append(moved[:3, 3] - initial_pose[:3, 3])
+            rotations.append(moved[:3, :3] @ initial_pose[:3, :3].T)
+        else:
+            translations.append(np.full(3, np.nan))
+            rotations.append(np.full((3, 3), np.nan))
+    translations_array = temporal_smooth(np.stack(translations), radius=4)
+    rotations_array = temporal_smooth(np.stack(rotations), radius=4)
+    translations_array -= translations_array[0]
+    result = {}
+    for index, (frame, translation, matrix) in enumerate(
+        zip(frames, translations_array, rotations_array)
+    ):
+        u, _, vt = np.linalg.svd(matrix)
+        rotation = u @ vt
+        if np.linalg.det(rotation) < 0:
+            u[:, -1] *= -1
+            rotation = u @ vt
+        if index == 0:
+            rotation = np.eye(3)
+        pose = initial_pose.copy()
+        pose[:3, 3] += translation
+        pose[:3, :3] = scaled_rotation(rotation, rotation_scale) @ initial_pose[:3, :3]
+        result[frame] = pose
+    return result
+
+
+def confidence_map(frames: list[int], clip_record: dict) -> dict[int, float]:
+    records = {int(value["frame"]): value for value in clip_record["future"]}
+    result = {frames[0]: 1.0}
+    for frame in frames[1:]:
+        record = records[frame]
+        result[frame] = float(np.clip(record.get("pose_confidence", 0.0), 0.0, 1.0))
+    return result
+
+
+def average_ranks(values: np.ndarray) -> np.ndarray:
+    """Ranks with averaged ties, sufficient for a dependency-free Spearman audit."""
+    order = np.argsort(values, kind="mergesort")
+    ranks = np.empty(len(values), dtype=np.float64)
+    start = 0
+    while start < len(values):
+        end = start + 1
+        while end < len(values) and values[order[end]] == values[order[start]]:
+            end += 1
+        ranks[order[start:end]] = 0.5 * (start + end - 1)
+        start = end
+    return ranks
+
+
+def spearman(values: list[float], targets: list[float]) -> float | None:
+    if len(values) < 3:
+        return None
+    x = average_ranks(np.asarray(values, dtype=np.float64))
+    y = average_ranks(np.asarray(targets, dtype=np.float64))
+    if x.std() <= 1e-12 or y.std() <= 1e-12:
+        return None
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def isotonic_knots(
+    values: list[float], targets: list[float], *, increasing: bool
+) -> dict[str, list[float]]:
+    """Fit a one-dimensional weighted PAV calibration and return interpolation knots."""
+    x = np.asarray(values, dtype=np.float64)
+    y = np.asarray(targets, dtype=np.float64)
+    unique_x, inverse, counts = np.unique(x, return_inverse=True, return_counts=True)
+    grouped = np.zeros(len(unique_x), dtype=np.float64)
+    np.add.at(grouped, inverse, y)
+    grouped /= counts
+    working = grouped if increasing else -grouped
+    blocks: list[list[float | int]] = []
+    for index, (mean, weight) in enumerate(zip(working, counts)):
+        blocks.append([index, index + 1, float(weight), float(mean)])
+        while len(blocks) >= 2 and blocks[-2][3] > blocks[-1][3]:
+            left, right = blocks[-2], blocks[-1]
+            total_weight = float(left[2]) + float(right[2])
+            total_mean = (
+                float(left[3]) * float(left[2])
+                + float(right[3]) * float(right[2])
+            ) / total_weight
+            blocks[-2:] = [[int(left[0]), int(right[1]), total_weight, total_mean]]
+    fitted = np.empty(len(unique_x), dtype=np.float64)
+    for start, end, _, mean in blocks:
+        fitted[int(start) : int(end)] = float(mean)
+    if not increasing:
+        fitted *= -1.0
+    return {"x": unique_x.tolist(), "y": fitted.tolist()}
 
 
 def pose_guided_crop(
@@ -133,7 +263,7 @@ def main() -> None:
     parser.add_argument("--max-samples", type=int, default=32)
     parser.add_argument("--split", choices=("train", "val", "test"), default="val")
     parser.add_argument("--frames-per-clip", type=int, default=4)
-    parser.add_argument("--pair-id", type=str, default=None)
+    parser.add_argument("--pair-id", action="append", dest="pair_ids")
     parser.add_argument("--depth-radius", type=int, default=3)
     parser.add_argument("--ransac-threshold-m", type=float, default=0.025)
     parser.add_argument("--camera-indices", default="0,1,2,3")
@@ -142,6 +272,16 @@ def main() -> None:
         type=Path,
         default=Path("datasets/H2O/experiments/exo_face_head_motion/summary.json"),
     )
+    parser.add_argument(
+        "--audit-output", type=Path,
+        help=(
+            "Optional GT-only evaluation/calibration JSON. Future ego poses are "
+            "not read at all unless this argument is supplied."
+        ),
+    )
+    parser.add_argument("--deployment-rotation-scale", type=float, default=0.5)
+    parser.add_argument("--good-rotation-deg", type=float, default=2.0)
+    parser.add_argument("--good-translation-m", type=float, default=0.02)
     args = parser.parse_args()
     camera_indices = tuple(
         int(value.strip()) for value in args.camera_indices.split(",") if value.strip()
@@ -151,13 +291,19 @@ def main() -> None:
 
     rows = load_combined_rows(
         args.index,
-        (10**9 if args.pair_id is not None else args.max_samples),
+        (10**9 if args.pair_ids is not None else args.max_samples),
         split=args.split,
     )
-    if args.pair_id is not None:
-        rows = [row for row in rows if row["pair_id"] == args.pair_id]
+    if args.pair_ids is not None:
+        requested = set(args.pair_ids)
+        rows = [row for row in rows if row["pair_id"] in requested]
         if not rows:
-            raise ValueError(f"Pair id not found in split={args.split}: {args.pair_id}")
+            raise ValueError(
+                f"Pair ids not found in split={args.split}: {sorted(requested)}"
+            )
+        missing = requested - {row["pair_id"] for row in rows}
+        if missing:
+            raise ValueError(f"Pair ids missing in split={args.split}: {sorted(missing)}")
     options = vision.FaceLandmarkerOptions(
         base_options=python.BaseOptions(model_asset_path=str(args.model)),
         running_mode=vision.RunningMode.IMAGE,
@@ -179,8 +325,8 @@ def main() -> None:
     )
     counters = defaultdict(int)
     scales = (0.0, 0.25, 0.5, 0.75, 1.0)
-    translation_scale_errors = {scale: [] for scale in scales}
     rotation_scale_errors = {scale: [] for scale in scales}
+    audit_samples: list[dict[str, float | int | str]] = []
     inlier_counts = []
     per_clip = []
 
@@ -265,9 +411,6 @@ def main() -> None:
             for time_index in range(1, len(frames)):
                 current_points = points_by_frame[time_index]
                 common = sorted(set(initial_points) & set(current_points))
-                gt_pose = load_pose(
-                    target_root / "cam_pose" / f"{int(frames[time_index]):06d}.txt"
-                )
                 record = {"frame": int(frames[time_index]), "common_landmarks": len(common)}
                 if len(common) >= 3:
                     source = np.stack([initial_points[index] for index in common])
@@ -294,6 +437,17 @@ def main() -> None:
                             -float(inlier_residuals.mean())
                             / max(args.ransac_threshold_m, 1e-6)
                         ))
+                        geometric_confidence = (
+                            inlier_ratio * view_factor * residual_factor
+                        )
+                        motion_rotation_deg = rotation_angle_deg(
+                            head_transform[:3, :3]
+                        )
+                        motion_translation_m = float(np.linalg.norm(delta_position))
+                        motion_risk_factor = float(np.exp(
+                            -motion_rotation_deg / MOTION_ROTATION_RISK_SCALE_DEG
+                            -motion_translation_m / MOTION_TRANSLATION_RISK_SCALE_M
+                        ))
                         record.update(
                             {
                                 "ransac_inliers": int(inliers.sum()),
@@ -301,8 +455,14 @@ def main() -> None:
                                 "inlier_residual_p95_m": float(
                                     np.percentile(inlier_residuals, 95)
                                 ),
+                                "geometric_pose_confidence": float(
+                                    geometric_confidence
+                                ),
+                                "estimated_motion_rotation_deg": motion_rotation_deg,
+                                "estimated_motion_translation_m": motion_translation_m,
+                                "motion_risk_factor": motion_risk_factor,
                                 "pose_confidence": float(
-                                    inlier_ratio * view_factor * residual_factor
+                                    geometric_confidence * motion_risk_factor
                                 ),
                                 # Keep the exo-only rigid head transform itself.  The
                                 # legacy camera deltas below are convenient when the
@@ -316,19 +476,45 @@ def main() -> None:
                                 "estimated_delta_rotation_world": delta_rotation.tolist(),
                             }
                         )
-                        for scale in scales:
-                            predicted_position = initial_pose[:3, 3] + scale * delta_position
-                            predicted_rotation = (
-                                scaled_rotation(delta_rotation, scale) @ initial_pose[:3, :3]
-                            )
-                            translation_scale_errors[scale].append(
-                                float(np.linalg.norm(predicted_position - gt_pose[:3, 3]))
-                            )
-                            rotation_scale_errors[scale].append(
-                                rotation_angle_deg(predicted_rotation.T @ gt_pose[:3, :3])
-                            )
                 clip_record["future"].append(record)
             per_clip.append(clip_record)
+            if args.audit_output is not None:
+                confidence_by_frame = confidence_map(
+                    frames.tolist(), clip_record
+                )
+                deployed = deployed_pose_map(
+                    frames.tolist(), initial_pose, clip_record,
+                    rotation_scale=args.deployment_rotation_scale,
+                )
+                swept = {
+                    scale: deployed_pose_map(
+                        frames.tolist(), initial_pose, clip_record,
+                        rotation_scale=scale,
+                    )
+                    for scale in scales
+                }
+                for frame in frames[1:]:
+                    gt_pose = load_pose(
+                        target_root / "cam_pose" / f"{int(frame):06d}.txt"
+                    )
+                    predicted = deployed[int(frame)]
+                    rotation_error = rotation_angle_deg(
+                        predicted[:3, :3].T @ gt_pose[:3, :3]
+                    )
+                    translation_error = float(np.linalg.norm(
+                        predicted[:3, 3] - gt_pose[:3, 3]
+                    ))
+                    audit_samples.append({
+                        "pair_id": row["pair_id"],
+                        "frame": int(frame),
+                        "raw_confidence": confidence_by_frame[int(frame)],
+                        "rotation_error_deg": rotation_error,
+                        "translation_error_m": translation_error,
+                    })
+                    for scale in scales:
+                        rotation_scale_errors[scale].append(rotation_angle_deg(
+                            swept[scale][int(frame)][:3, :3].T @ gt_pose[:3, :3]
+                        ))
             print(
                 json.dumps(
                     {
@@ -346,23 +532,20 @@ def main() -> None:
     result = {
         "protocol": (
             f"exo cameras {list(camera_indices)} RGB-D + calibration + initial ego pose; "
-            "future ego pose evaluation-only"
+            "future ego poses not read"
         ),
         "camera_indices": list(camera_indices),
         "model": str(args.model),
         "samples": len(rows),
         "split": args.split,
         "face_landmarks": list(FACE_LANDMARKS),
+        "confidence_motion_risk_scales": {
+            "rotation_deg": MOTION_ROTATION_RISK_SCALE_DEG,
+            "translation_m": MOTION_TRANSLATION_RISK_SCALE_M,
+        },
         "camera_detection_fraction": counters["camera_images_detected"] / max(counters["camera_images"], 1),
         "face_cloud_frame_fraction": counters["frames_with_face_cloud"] / max(len(rows) * args.frames_per_clip, 1),
         "future_pose_estimate_fraction": counters["future_frames_estimated"] / max(len(rows) * (args.frames_per_clip - 1), 1),
-        "motion_scale_sweep": {
-            str(scale): {
-                "translation_m": describe(translation_scale_errors[scale]),
-                "rotation_deg": describe(rotation_scale_errors[scale]),
-            }
-            for scale in scales
-        },
         "ransac_inliers": describe(inlier_counts),
         "counters": dict(counters),
         "per_clip": per_clip,
@@ -370,6 +553,49 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(result | {"per_clip": "omitted"}, indent=2, ensure_ascii=False))
+    if args.audit_output is not None:
+        confidence = [float(value["raw_confidence"]) for value in audit_samples]
+        rotation_error = [float(value["rotation_error_deg"]) for value in audit_samples]
+        translation_error = [float(value["translation_error_m"]) for value in audit_samples]
+        good = [
+            float(rotation <= args.good_rotation_deg and translation <= args.good_translation_m)
+            for rotation, translation in zip(rotation_error, translation_error)
+        ]
+        audit = {
+            "protocol": "GT future cam4 poses used only in this audit/calibration file",
+            "split": args.split,
+            "pair_ids": [row["pair_id"] for row in rows],
+            "deployment_rotation_scale": args.deployment_rotation_scale,
+            "good_pose_thresholds": {
+                "rotation_deg": args.good_rotation_deg,
+                "translation_m": args.good_translation_m,
+            },
+            "spearman": {
+                "confidence_vs_rotation_error": spearman(confidence, rotation_error),
+                "confidence_vs_translation_error": spearman(confidence, translation_error),
+            },
+            "calibration": {
+                "probability_good_pose": isotonic_knots(
+                    confidence, good, increasing=True
+                ),
+                "expected_rotation_error_deg": isotonic_knots(
+                    confidence, rotation_error, increasing=False
+                ),
+                "expected_translation_error_m": isotonic_knots(
+                    confidence, translation_error, increasing=False
+                ),
+            },
+            "rotation_scale_sweep": {
+                str(scale): describe(rotation_scale_errors[scale])
+                for scale in scales
+            },
+            "samples": audit_samples,
+        }
+        args.audit_output.parent.mkdir(parents=True, exist_ok=True)
+        args.audit_output.write_text(
+            json.dumps(audit, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
 
 
 if __name__ == "__main__":

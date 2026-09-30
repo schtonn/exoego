@@ -465,6 +465,26 @@ def head_pose_confidence_map(frames: list[int], head_record: dict) -> dict[int, 
     return confidence
 
 
+def calibrated_pose_reliability_map(
+    raw_confidence: dict[int, float], calibration_path: Path | None,
+) -> dict[int, float]:
+    """Map the geometric score to validation-measured good-pose probability."""
+    if calibration_path is None:
+        # Uncalibrated scores must not silently change the renderer.  They stay
+        # available in the manifest for auditing and terminal-model features.
+        return {frame: 1.0 for frame in raw_confidence}
+    audit = json.loads(calibration_path.read_text(encoding="utf-8"))
+    knots = audit["calibration"]["probability_good_pose"]
+    x = np.asarray(knots["x"], dtype=np.float64)
+    y = np.asarray(knots["y"], dtype=np.float64)
+    if len(x) == 0 or len(x) != len(y):
+        raise ValueError(f"Invalid pose confidence calibration: {calibration_path}")
+    return {
+        frame: float(np.clip(np.interp(value, x, y), 0.0, 1.0))
+        for frame, value in raw_confidence.items()
+    }
+
+
 def compute_motion_masks(
     camera_roots: list[Path], frames: list[int], size: tuple[int, int] = (160, 90),
     causal: bool = False,
@@ -496,26 +516,40 @@ def compute_motion_masks(
 
 def add_systematic_pose_noise(
     poses: dict[int, np.ndarray], rotation_degrees: float,
-    translation_m: float, seed: int,
-) -> dict[int, np.ndarray]:
-    """Apply one repeatable calibration-like perturbation to an entire trajectory."""
-    if rotation_degrees == 0.0 and translation_m == 0.0:
-        return poses
+    translation_m: float, seed: int, mode: str = "systematic",
+    rotation_axis: str = "random", translation_axis: str = "random",
+) -> tuple[dict[int, np.ndarray], dict[str, object]]:
+    """Apply repeatable calibration error or time-growing drift to a trajectory."""
+    def unit_vector(name: str, rng: np.random.Generator) -> np.ndarray:
+        if name in {"x", "y", "z"}:
+            value = np.zeros(3, dtype=np.float64)
+            value[{"x": 0, "y": 1, "z": 2}[name]] = 1.0
+            return value
+        value = rng.normal(size=3)
+        return value / max(float(np.linalg.norm(value)), 1e-12)
+
     rng = np.random.default_rng(seed)
-    axis = rng.normal(size=3)
-    axis /= max(float(np.linalg.norm(axis)), 1e-12)
-    rotation_vector = axis * np.deg2rad(rotation_degrees)
-    noisy_rotation, _ = cv2.Rodrigues(rotation_vector.astype(np.float64))
-    direction = rng.normal(size=3)
-    direction /= max(float(np.linalg.norm(direction)), 1e-12)
-    translation = direction * translation_m
+    axis = unit_vector(rotation_axis, rng)
+    direction = unit_vector(translation_axis, rng)
+    metadata: dict[str, object] = {
+        "mode": mode,
+        "rotation_axis": axis.tolist(),
+        "translation_direction": direction.tolist(),
+    }
+    if rotation_degrees == 0.0 and translation_m == 0.0:
+        return poses, metadata
     result = {}
-    for frame, original in poses.items():
+    items = list(poses.items())
+    for index, (frame, original) in enumerate(items):
+        factor = index / max(len(items) - 1, 1) if mode == "linear_drift" else 1.0
+        rotation_vector = axis * np.deg2rad(rotation_degrees * factor)
+        noisy_rotation, _ = cv2.Rodrigues(rotation_vector.astype(np.float64))
+        translation = direction * translation_m * factor
         pose = original.copy()
         pose[:3, :3] = pose[:3, :3] @ noisy_rotation
         pose[:3, 3] += translation
         result[frame] = pose
-    return result
+    return result, metadata
 
 
 def projected_motion_support(
@@ -720,6 +754,29 @@ def main() -> None:
     parser.add_argument("--pose-noise-translation-m", type=float, default=0.0)
     parser.add_argument("--pose-noise-seed", type=int, default=0)
     parser.add_argument(
+        "--pose-noise-mode", choices=("systematic", "linear_drift"),
+        default="systematic",
+    )
+    parser.add_argument(
+        "--pose-noise-rotation-axis", choices=("random", "x", "y", "z"),
+        default="random",
+    )
+    parser.add_argument(
+        "--pose-noise-translation-axis", choices=("random", "x", "y", "z"),
+        default="random",
+    )
+    parser.add_argument(
+        "--frame-step", type=int, default=1,
+        help="Render every Nth canonical frame for robustness audits; training uses 1.",
+    )
+    parser.add_argument(
+        "--pose-confidence-calibration", type=Path,
+        help=(
+            "Validation-only isotonic calibration JSON. When supplied, its "
+            "good-pose probability controls geometric evidence during composition."
+        ),
+    )
+    parser.add_argument(
         "--annotated-exo-object",
         action="store_true",
         help="Use cam0--cam3 object-pose annotations as an explicit upper-bound layer.",
@@ -794,6 +851,8 @@ def main() -> None:
         raise ValueError("--object-source-front-margin-m must be non-negative")
     if args.pose_noise_rotation_deg < 0 or args.pose_noise_translation_m < 0:
         raise ValueError("pose-noise magnitudes must be non-negative")
+    if args.frame_step < 1:
+        raise ValueError("--frame-step must be positive")
     if args.disable_ego_anchor and args.annotated_exo_object_mode.startswith("anchor_warp"):
         raise ValueError("anchor_warp requires ego frame 0; disable the object anchor too")
     if args.initial_pose_summary is not None and not args.disable_ego_anchor:
@@ -830,7 +889,9 @@ def main() -> None:
     row["source_rgb_dirs"] = json.dumps(
         [by_camera[camera]["source_rgb_dir"] for camera in required_cameras]
     )
-    frames = list(range(int(row["start_frame"]), int(row["end_frame"]) + 1))
+    frames = list(
+        range(int(row["start_frame"]), int(row["end_frame"]) + 1, args.frame_step)
+    )
     first_frame = frames[0]
     target_root = Path(row["target_rgb_dir"]).parent
     all_source_roots = [Path(value).parent for value in json.loads(row["source_rgb_dirs"])]
@@ -876,11 +937,15 @@ def main() -> None:
     poses = smoothed_pose_map(
         frames, initial_pose, head_record, rotation_scale=args.head_rotation_scale
     )
-    poses = add_systematic_pose_noise(
+    poses, pose_noise_parameters = add_systematic_pose_noise(
         poses, args.pose_noise_rotation_deg, args.pose_noise_translation_m,
-        args.pose_noise_seed,
+        args.pose_noise_seed, args.pose_noise_mode,
+        args.pose_noise_rotation_axis, args.pose_noise_translation_axis,
     )
     pose_confidences = head_pose_confidence_map(frames, head_record)
+    pose_reliabilities = calibrated_pose_reliability_map(
+        pose_confidences, args.pose_confidence_calibration
+    )
     motion_masks = compute_motion_masks(
         source_roots, frames, causal=args.causal_motion_masks
     )
@@ -1292,7 +1357,7 @@ def main() -> None:
             nominal_depth_m = (
                 float(np.nanmedian(observed_depth)) if observed_depth.size else 0.8
             )
-            generated_background, _ = generate_unknown_background(
+            geometry_background, _ = generate_unknown_background(
                 geometry_rgb,
                 geometry_known,
                 previous_generated=previous_generated_background,
@@ -1301,6 +1366,32 @@ def main() -> None:
                 intrinsics=intrinsics,
                 nominal_depth_m=nominal_depth_m,
             )
+            pose_reliability = pose_reliabilities[frame]
+            if (
+                pose_reliability < 1.0
+                and previous_generated_background is not None
+                and previous_pose is not None
+            ):
+                # The old compositor hard-pasted every reprojected pixel even
+                # when the pose estimator itself said the frame was weak.  A
+                # calibrated low-confidence frame now falls back continuously
+                # to the trajectory-warped prior instead of turning uncertain
+                # geometry into an irreversible hard constraint.
+                fallback_background, _ = generate_unknown_background(
+                    np.zeros_like(geometry_rgb),
+                    np.zeros_like(geometry_known),
+                    previous_generated=previous_generated_background,
+                    previous_pose=previous_pose,
+                    current_pose=pose,
+                    intrinsics=intrinsics,
+                    nominal_depth_m=nominal_depth_m,
+                )
+                generated_background = (
+                    pose_reliability * geometry_background
+                    + (1.0 - pose_reliability) * fallback_background
+                )
+            else:
+                generated_background = geometry_background
             if object_layer is not None:
                 # Resolve hand/object occlusion in metric target-camera depth.
                 arm_in_front = arm_valid & (
@@ -1405,6 +1496,7 @@ def main() -> None:
                     "dynamic_completion_fraction": float(dynamic_completion.mean()),
                     "predicted_camera_pose_world": pose.tolist(),
                     "predicted_camera_pose_confidence": pose_confidences[frame],
+                    "calibrated_camera_pose_reliability": pose_reliabilities[frame],
                 }
             )
         tiles = [
@@ -1498,6 +1590,15 @@ def main() -> None:
                 "pose_noise_rotation_deg": args.pose_noise_rotation_deg,
                 "pose_noise_translation_m": args.pose_noise_translation_m,
                 "pose_noise_seed": args.pose_noise_seed,
+                "pose_noise_parameters": pose_noise_parameters,
+                "frame_step": args.frame_step,
+                "pose_confidence_calibration": (
+                    str(args.pose_confidence_calibration)
+                    if args.pose_confidence_calibration is not None else None
+                ),
+                "render_composition_uses_pose_reliability": (
+                    args.pose_confidence_calibration is not None
+                ),
             },
             "frame_count": len(frames),
             "image_size": render_size,

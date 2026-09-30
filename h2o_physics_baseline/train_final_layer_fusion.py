@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from h2o_physics_baseline.final_layer_fusion import (
     AuthorizedFinalFusion,
     FinalLayerWindowDataset,
+    RGB_STREAMS,
     parameter_count,
 )
 
@@ -39,13 +40,17 @@ def temporal_acceleration(value: torch.Tensor) -> torch.Tensor:
 
 
 def augment_training_batch(tensors: dict[str, torch.Tensor]) -> None:
-    """Apply matched image-space augmentation without altering masks/provenance."""
+    """Apply one matched image-space transform to every spatial tensor."""
     if random.random() < 0.5:
-        for key in ("input", "base", "proposal", "target"):
-            tensors[key] = torch.flip(tensors[key], dims=(-1,))
+        for key, value in tuple(tensors.items()):
+            # Batched image, mask, provenance, and reliability tensors all use
+            # width as their final dimension.  Flipping only RGB silently
+            # misregistered half of the training samples from their edit masks.
+            if value.ndim >= 4:
+                tensors[key] = torch.flip(value, dims=(-1,))
     gain = random.uniform(0.9, 1.1)
     offset = random.uniform(-0.03, 0.03)
-    rgb_channels = 7 * 3
+    rgb_channels = len(RGB_STREAMS) * 3
     tensors["input"][:, :rgb_channels] = (
         tensors["input"][:, :rgb_channels] * gain + offset
     ).clamp(0.0, 1.0)
@@ -70,6 +75,9 @@ def evaluate(model: AuthorizedFinalFusion, loader: DataLoader, device: torch.dev
         metrics = {
             "l1": F.l1_loss(output, target),
             "authorized_l1": masked_mean((output - target).abs(), auth),
+            "editable_l1": masked_mean(
+                (output - target).abs(), tensors["edit_weight"]
+            ),
             "base_l1": F.l1_loss(tensors["base"], target),
             "proposal_l1": F.l1_loss(tensors["proposal"], target),
             "base_authorized_l1": masked_mean((tensors["base"] - target).abs(), auth),
@@ -170,7 +178,7 @@ def main() -> None:
     initial_metrics = evaluate(model, val_loader, device)
     history = [{"epoch": 0, "train_loss": None, **initial_metrics}]
     print(json.dumps(history[0], ensure_ascii=False), flush=True)
-    best = initial_metrics["authorized_l1"]
+    best = initial_metrics["editable_l1"]
     best_epoch = 0
     initial_checkpoint = {
         "model": model.state_dict(),
@@ -189,9 +197,15 @@ def main() -> None:
                 tensors["input"], tensors["base"], tensors["proposal"], tensors["edit_weight"]
             )
             auth = tensors["authorized"]
+            edit_weight = tensors["edit_weight"]
             target = tensors["target"]
-            reconstruction = masked_mean((output - target).abs(), auth)
-            delta_mask = torch.minimum(auth[:, :, 1:], auth[:, :, :-1])
+            # Supervise every pixel the model is permitted to change.  The old
+            # authorized-only loss gave soft reliability corrections no direct
+            # reconstruction signal even though the forward pass exposed them.
+            reconstruction = masked_mean((output - target).abs(), edit_weight)
+            delta_mask = torch.minimum(
+                edit_weight[:, :, 1:], edit_weight[:, :, :-1]
+            )
             masked_temporal = masked_mean(
                 (temporal_delta(output) - temporal_delta(target)).abs(), delta_mask
             )
@@ -237,8 +251,8 @@ def main() -> None:
             or metrics["delta_l1"]
             <= initial_metrics["delta_l1"] + args.temporal_tolerance
         )
-        if metrics["authorized_l1"] < best and temporal_allowed:
-            best = metrics["authorized_l1"]
+        if metrics["editable_l1"] < best and temporal_allowed:
+            best = metrics["editable_l1"]
             best_epoch = epoch
             torch.save(checkpoint, args.output / "best.pt")
         if epoch - best_epoch >= args.patience:
@@ -258,7 +272,7 @@ def main() -> None:
         "val_windows": len(val_data),
         "parameter_count": parameter_count(model),
         "best_epoch": best_epoch,
-        "best_authorized_l1": best,
+        "best_editable_l1": best,
         "initialization": "exact current constrained-ProPainter output",
         "correction_policy": (
             "full edits in authorized repair pixels; reliability-weighted corrections "

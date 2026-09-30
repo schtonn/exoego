@@ -24,16 +24,24 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# The public repository may live beside the private datasets/environments
+# rather than containing them.  Keep code paths repository-relative while
+# resolving large local assets from the containing workspace when necessary.
+WORKSPACE_ROOT = (
+    PROJECT_ROOT if (PROJECT_ROOT / "datasets").exists() else PROJECT_ROOT.parent
+)
+
 from h2o_physics_baseline.protocols import (
     LAYERED_CONTRACT_VERSION,
     validate_layered_manifest,
 )
 
 
-INDEX = PROJECT_ROOT / "datasets/H2O/oracle_state/paired_physical_clips.csv"
-HEAD_SUMMARY = PROJECT_ROOT / "datasets/H2O/experiments/exo_face_head_motion/summary_train32.json"
-DETECTION_PYTHON = PROJECT_ROOT / "envs/h2o-detection/bin/python"
-VIDEO_PYTHON = PROJECT_ROOT / "envs/propainter/bin/python"
+INDEX = WORKSPACE_ROOT / "datasets/H2O/oracle_state/paired_physical_clips.csv"
+DETECTION_PYTHON = WORKSPACE_ROOT / "envs/h2o-detection/bin/python"
+VIDEO_PYTHON = WORKSPACE_ROOT / "envs/propainter/bin/python"
+FACE_MODEL = WORKSPACE_ROOT / "models/mediapipe/face_landmarker.task"
+POSE_MODEL = WORKSPACE_ROOT / "models/mediapipe/pose_landmarker_full.task"
 
 DEFAULT_PAIRS = (
     "subject1_h1_0_000000_000063_cam0_to_cam4",
@@ -55,6 +63,14 @@ DEFAULT_TEST_PAIRS = (
     "subject4_k2_4_000160_000223_cam0_to_cam4",
     "subject4_k2_5_000000_000063_cam0_to_cam4",
     "subject4_o1_7_000000_000063_cam0_to_cam4",
+)
+
+DEFAULT_VAL_PAIRS = (
+    "subject3_h1_0_000000_000063_cam0_to_cam4",
+    "subject3_h2_3_000384_000447_cam0_to_cam4",
+    "subject3_k1_4_000160_000223_cam0_to_cam4",
+    "subject3_o1_5_000320_000383_cam0_to_cam4",
+    "subject3_o2_2_000064_000127_cam0_to_cam4",
 )
 
 
@@ -87,7 +103,11 @@ def png_count(path: Path, digits: int = 6) -> int:
     ) if path.is_dir() else 0
 
 
-def layered_ready(model_input: Path, pair_id: str) -> bool:
+def layered_ready(
+    model_input: Path, pair_id: str,
+    pose_confidence_calibration: Path | None = None,
+    head_rotation_scale: float = 0.5,
+) -> bool:
     manifest_path = model_input / "manifest.json"
     if not manifest_path.exists() or png_count(model_input / "input_frames") != 64:
         return False
@@ -101,23 +121,34 @@ def layered_ready(model_input: Path, pair_id: str) -> bool:
     return (
         manifest.get("pair_id") == pair_id
         and manifest["input_contract"].get("version") == LAYERED_CONTRACT_VERSION
+        and manifest["input_contract"].get("pose_confidence_calibration")
+        == (
+            str(pose_confidence_calibration)
+            if pose_confidence_calibration is not None else None
+        )
+        and float(manifest["input_contract"].get("head_rotation_scale", -1.0))
+        == head_rotation_scale
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path)
-    parser.add_argument("--purpose", choices=("train", "test"), default="train")
+    parser.add_argument(
+        "--purpose", choices=("train", "val", "test"), default="train"
+    )
     parser.add_argument("--pair-id", action="append", dest="pairs")
     parser.add_argument("--gpu", default="2")
+    parser.add_argument("--pose-confidence-calibration", type=Path)
+    parser.add_argument("--head-rotation-scale", type=float, default=0.5)
     parser.add_argument("--stop-after", choices=("state", "layers", "propainter"))
     args = parser.parse_args()
-    default_root = Path(
-        "datasets/H2O/experiments/final_layer_scale_train8"
-        if args.purpose == "train"
-        else "datasets/H2O/experiments/final_layer_frozen_test8"
-    )
-    output_root = (PROJECT_ROOT / (args.output_root or default_root)).resolve()
+    default_roots = {
+        "train": WORKSPACE_ROOT / "datasets/H2O/experiments/final_layer_scale_train8",
+        "val": WORKSPACE_ROOT / "datasets/H2O/experiments/final_layer_scale_val5",
+        "test": WORKSPACE_ROOT / "datasets/H2O/experiments/final_layer_frozen_test8",
+    }
+    output_root = (args.output_root or default_roots[args.purpose]).resolve()
     state_root = output_root / "state/hand"
     arm_root = output_root / "state/arm"
     head_root = output_root / "state/head"
@@ -127,13 +158,16 @@ def main() -> None:
 
     with INDEX.open(encoding="utf-8") as handle:
         indexed = {row["pair_id"]: row for row in csv.DictReader(handle)}
-    pairs = tuple(args.pairs or (
-        DEFAULT_PAIRS if args.purpose == "train" else DEFAULT_TEST_PAIRS
-    ))
+    default_pairs = {
+        "train": DEFAULT_PAIRS,
+        "val": DEFAULT_VAL_PAIRS,
+        "test": DEFAULT_TEST_PAIRS,
+    }
+    pairs = tuple(args.pairs or default_pairs[args.purpose])
     missing = [pair for pair in pairs if pair not in indexed]
     if missing:
         raise ValueError(f"Pairs missing from canonical index: {missing}")
-    expected_split = "train" if args.purpose == "train" else "test"
+    expected_split = args.purpose
     wrong_split = [pair for pair in pairs if indexed[pair]["split"] != expected_split]
     if wrong_split:
         raise ValueError(
@@ -180,6 +214,8 @@ def main() -> None:
                 str(DETECTION_PYTHON),
                 "h2o_physics_baseline/audit_exo_face_head_motion.py",
                 "--split", row["split"], "--pair-id", pair,
+                "--index", str(INDEX),
+                "--model", str(FACE_MODEL), "--pose-model", str(POSE_MODEL),
                 "--frames-per-clip", "64", "--output", str(head_path),
             ])
         if not npz_has_frames(mask_path, {start}):
@@ -194,8 +230,12 @@ def main() -> None:
 
         destination = clip_root / row["sequence"].replace("/", "_") / f"{start:06d}_{end:06d}"
         model_input = destination / "model_input"
-        if not layered_ready(model_input, pair):
-            run([
+        layers_updated = not layered_ready(
+            model_input, pair, args.pose_confidence_calibration,
+            args.head_rotation_scale,
+        )
+        if layers_updated:
+            render_command = [
                 str(VIDEO_PYTHON),
                 "h2o_physics_baseline/render_causal_video_background_split.py",
                 "--index", str(INDEX),
@@ -205,17 +245,26 @@ def main() -> None:
                 "--initial-hand-mask-root", str(mask_root),
                 "--object-state-root", str(INDEX.parent),
                 "--source-feather-radius", "2", "--source-color-align",
+                "--head-rotation-scale", str(args.head_rotation_scale),
                 "--causal-motion-masks",
                 "--annotated-exo-object", "--annotated-exo-object-mode", "anchor_warp",
                 "--object-alpha", "0.25", "--model-input-root", str(model_input),
                 "--output", str(destination / "layered.mp4"),
-            ], video_environment)
+            ]
+            if args.pose_confidence_calibration is not None:
+                render_command.extend([
+                    "--pose-confidence-calibration",
+                    str(args.pose_confidence_calibration.resolve()),
+                ])
+            run(render_command, video_environment)
         if args.stop_after == "layers":
             continue
 
         proposal_root = destination / "propainter_unknown"
         proposal_frames = proposal_root / "input_frames/frames"
-        if png_count(proposal_frames, digits=4) != 64:
+        # A layer rebuild changes the ProPainter inputs even when the stale
+        # output directory still happens to contain 64 files.
+        if layers_updated or png_count(proposal_frames, digits=4) != 64:
             run([
                 str(VIDEO_PYTHON), "third_party/ProPainter/inference_propainter.py",
                 "-i", str(model_input / "input_frames"),
@@ -224,7 +273,7 @@ def main() -> None:
                 "--save_frames", "--fp16", "--save_fps", "15",
             ], video_environment)
         composed_root = destination / "propainter_composed"
-        if png_count(composed_root / "frames") != 64:
+        if layers_updated or png_count(composed_root / "frames") != 64:
             run([
                 str(VIDEO_PYTHON), "h2o_physics_baseline/compose_propainter_repair.py",
                 "--model-input-root", str(model_input),
