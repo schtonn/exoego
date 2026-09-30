@@ -1,0 +1,15 @@
+{
+  "status": "selected_on_subject3_validation_then_evaluated_on_subject4",
+  "parent_config": "configs/frozen_h2o_subject4_v1.json",
+  "selection_split": "val_subject3",
+  "holdout_note": "subject4 had been inspected during v1 development; v2 parameters were selected without tuning on v2 subject4 metrics",
+  "renderer": {
+    "soft_reliability_boundary_radius": 3,
+    "soft_reliability_edge_floor": 0.25,
+    "fallback": "previous generated background warped by estimated camera motion",
+    "unknown_pixels_blended_twice": false
+  },
+  "acceptance_rule": "mean full-frame L1 and temporal delta L1 must both improve on all five subject3 validation clips",
+  "validation_result": "results/soft_reliability_val5.json",
+  "test_result": "results/soft_reliability_subject4_test8.json"
+}

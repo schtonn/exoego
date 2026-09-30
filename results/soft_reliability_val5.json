@@ -1,0 +1,181 @@
+{
+  "clips": [
+    {
+      "pair_id": "subject3_h1_0_000000_000063_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.06792435795068741,
+          "authorized_l1": 0.1336020976305008,
+          "delta_l1": 0.02043469436466694,
+          "acceleration_l1": 0.030535416677594185,
+          "outside_hard_authorization_max_change": 0.5215686559677124
+        },
+        "propainter_only": {
+          "l1": 0.06410596519708633,
+          "authorized_l1": 0.11857490986585617,
+          "delta_l1": 0.019660402089357376,
+          "acceleration_l1": 0.0292148869484663,
+          "outside_hard_authorization_max_change": 0.0
+        },
+        "accepted_final": {
+          "l1": 0.06410596519708633,
+          "authorized_l1": 0.11857490986585617,
+          "delta_l1": 0.019660402089357376,
+          "acceleration_l1": 0.0292148869484663,
+          "outside_hard_authorization_max_change": 0.0
+        }
+      }
+    },
+    {
+      "pair_id": "subject3_h2_3_000384_000447_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.059289272874593735,
+          "authorized_l1": 0.1162777915596962,
+          "delta_l1": 0.026327380910515785,
+          "acceleration_l1": 0.03861257806420326,
+          "outside_hard_authorization_max_change": 0.46666669845581055
+        },
+        "propainter_only": {
+          "l1": 0.05783891677856445,
+          "authorized_l1": 0.10890722274780273,
+          "delta_l1": 0.02570614218711853,
+          "acceleration_l1": 0.03710277006030083,
+          "outside_hard_authorization_max_change": 0.0
+        },
+        "accepted_final": {
+          "l1": 0.05783891677856445,
+          "authorized_l1": 0.10890722274780273,
+          "delta_l1": 0.02570614218711853,
+          "acceleration_l1": 0.03710277006030083,
+          "outside_hard_authorization_max_change": 0.0
+        }
+      }
+    },
+    {
+      "pair_id": "subject3_k1_4_000160_000223_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.05537441372871399,
+          "authorized_l1": 0.0718492940068245,
+          "delta_l1": 0.023744089528918266,
+          "acceleration_l1": 0.033838316798210144,
+          "outside_hard_authorization_max_change": 0.3686274588108063
+        },
+        "propainter_only": {
+          "l1": 0.05952855572104454,
+          "authorized_l1": 0.08951859921216965,
+          "delta_l1": 0.024064354598522186,
+          "acceleration_l1": 0.03411000967025757,
+          "outside_hard_authorization_max_change": 0.0
+        },
+        "accepted_final": {
+          "l1": 0.05952855572104454,
+          "authorized_l1": 0.08951859921216965,
+          "delta_l1": 0.024064354598522186,
+          "acceleration_l1": 0.03411000967025757,
+          "outside_hard_authorization_max_change": 0.0
+        }
+      }
+    },
+    {
+      "pair_id": "subject3_o1_5_000320_000383_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.08583959937095642,
+          "authorized_l1": 0.129904642701149,
+          "delta_l1": 0.0336778499186039,
+          "acceleration_l1": 0.04723958671092987,
+          "outside_hard_authorization_max_change": 0.3450980484485626
+        },
+        "propainter_only": {
+          "l1": 0.08012459427118301,
+          "authorized_l1": 0.10833042114973068,
+          "delta_l1": 0.033797502517700195,
+          "acceleration_l1": 0.04732868820428848,
+          "outside_hard_authorization_max_change": 0.0
+        },
+        "accepted_final": {
+          "l1": 0.08012459427118301,
+          "authorized_l1": 0.10833042114973068,
+          "delta_l1": 0.033797502517700195,
+          "acceleration_l1": 0.04732868820428848,
+          "outside_hard_authorization_max_change": 0.0
+        }
+      }
+    },
+    {
+      "pair_id": "subject3_o2_2_000064_000127_cam0_to_cam4",
+      "models": {
+        "fusion_off": {
+          "l1": 0.0724988579750061,
+          "authorized_l1": 0.12378595024347305,
+          "delta_l1": 0.022065604105591774,
+          "acceleration_l1": 0.033336035907268524,
+          "outside_hard_authorization_max_change": 0.7137255072593689
+        },
+        "propainter_only": {
+          "l1": 0.06729291379451752,
+          "authorized_l1": 0.09945736080408096,
+          "delta_l1": 0.021252376958727837,
+          "acceleration_l1": 0.031624190509319305,
+          "outside_hard_authorization_max_change": 0.0
+        },
+        "accepted_final": {
+          "l1": 0.06729291379451752,
+          "authorized_l1": 0.09945736080408096,
+          "delta_l1": 0.021252376958727837,
+          "acceleration_l1": 0.031624190509319305,
+          "outside_hard_authorization_max_change": 0.0
+        }
+      }
+    }
+  ],
+  "equal_clip_average": {
+    "fusion_off": {
+      "l1": 0.06818530037999153,
+      "authorized_l1": 0.1150839552283287,
+      "delta_l1": 0.02524992376565933,
+      "acceleration_l1": 0.0367123868316412,
+      "outside_hard_authorization_max_change": 0.48313727378845217
+    },
+    "propainter_only": {
+      "l1": 0.06577818915247917,
+      "authorized_l1": 0.10495770275592804,
+      "delta_l1": 0.024896155670285226,
+      "acceleration_l1": 0.035876109078526494,
+      "outside_hard_authorization_max_change": 0.0
+    },
+    "accepted_final": {
+      "l1": 0.06577818915247917,
+      "authorized_l1": 0.10495770275592804,
+      "delta_l1": 0.024896155670285226,
+      "acceleration_l1": 0.035876109078526494,
+      "outside_hard_authorization_max_change": 0.0
+    }
+  },
+  "equal_clip_sample_std": {
+    "fusion_off": {
+      "l1": 0.011975049740063486,
+      "authorized_l1": 0.025044761271382016,
+      "delta_l1": 0.0051909709055413,
+      "acceleration_l1": 0.006562157580102129,
+      "outside_hard_authorization_max_change": 0.1475521177939223
+    },
+    "propainter_only": {
+      "l1": 0.00884590339341707,
+      "authorized_l1": 0.010966106269170153,
+      "delta_l1": 0.0055061825645682135,
+      "acceleration_l1": 0.007039816487329539,
+      "outside_hard_authorization_max_change": 0.0
+    },
+    "accepted_final": {
+      "l1": 0.00884590339341707,
+      "authorized_l1": 0.010966106269170153,
+      "delta_l1": 0.0055061825645682135,
+      "acceleration_l1": 0.007039816487329539,
+      "outside_hard_authorization_max_change": 0.0
+    }
+  },
+  "accepted_final_selection": "validation early stopping selected epoch 0; exact constrained ProPainter proposal retained"
+}

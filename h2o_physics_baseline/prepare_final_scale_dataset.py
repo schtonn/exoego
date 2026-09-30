@@ -128,6 +128,8 @@ def layered_ready(
     pose_confidence_calibration: Path | None = None,
     head_rotation_scale: float = 0.5,
     annotated_object: bool = True,
+    soft_reliability_boundary_radius: int = 3,
+    soft_reliability_edge_floor: float = 0.25,
 ) -> bool:
     manifest_path = model_input / "manifest.json"
     if not manifest_path.exists() or png_count(model_input / "input_frames") != 64:
@@ -150,6 +152,10 @@ def layered_ready(
         and float(manifest["input_contract"].get("head_rotation_scale", -1.0))
         == head_rotation_scale
         and bool(manifest.get("annotated_exo_object")) == annotated_object
+        and int(manifest["input_contract"].get("soft_reliability_boundary_radius", -1))
+        == soft_reliability_boundary_radius
+        and float(manifest["input_contract"].get("soft_reliability_edge_floor", -1.0))
+        == soft_reliability_edge_floor
     )
 
 
@@ -163,6 +169,8 @@ def main() -> None:
     parser.add_argument("--gpu", default="2")
     parser.add_argument("--pose-confidence-calibration", type=Path)
     parser.add_argument("--head-rotation-scale", type=float, default=0.5)
+    parser.add_argument("--soft-reliability-boundary-radius", type=int, default=3)
+    parser.add_argument("--soft-reliability-edge-floor", type=float, default=0.25)
     parser.add_argument(
         "--annotated-object", action=argparse.BooleanOptionalAction, default=True,
         help="Use annotated H2O object poses; disable for the frozen no-object ablation.",
@@ -271,6 +279,8 @@ def main() -> None:
             model_input, pair, args.pose_confidence_calibration,
             args.head_rotation_scale,
             args.annotated_object,
+            args.soft_reliability_boundary_radius,
+            args.soft_reliability_edge_floor,
         )
         if layers_updated:
             render_command = [
@@ -285,6 +295,10 @@ def main() -> None:
                 "--source-feather-radius", "2", "--source-color-align",
                 "--head-rotation-scale", str(args.head_rotation_scale),
                 "--causal-motion-masks",
+                "--soft-reliability-boundary-radius",
+                str(args.soft_reliability_boundary_radius),
+                "--soft-reliability-edge-floor",
+                str(args.soft_reliability_edge_floor),
                 "--model-input-root", str(model_input),
                 "--output", str(destination / "layered.mp4"),
             ]

@@ -128,6 +128,48 @@ def dilated_mask(mask: np.ndarray, size: int) -> np.ndarray:
     ) > 0
 
 
+def soft_source_reliability(
+    static_valid: np.ndarray,
+    current_valid: np.ndarray,
+    history_valid: np.ndarray,
+    pose_reliability: float,
+    boundary_radius: int,
+    edge_floor: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return visible source reliability and its geometry/fallback blend alpha."""
+    labels = np.zeros(static_valid.shape, dtype=np.uint8)
+    labels[static_valid] = 1
+    labels[(~static_valid) & current_valid] = 2
+    labels[(~static_valid) & (~current_valid) & history_valid] = 3
+    known = labels > 0
+    edge = np.zeros_like(known)
+    edge[1:] |= labels[1:] != labels[:-1]
+    edge[:-1] |= labels[:-1] != labels[1:]
+    edge[:, 1:] |= labels[:, 1:] != labels[:, :-1]
+    edge[:, :-1] |= labels[:, :-1] != labels[:, 1:]
+    if boundary_radius > 0:
+        distance = cv2.distanceTransform((~edge).astype(np.uint8), cv2.DIST_L2, 3)
+        boundary_weight = edge_floor + (1.0 - edge_floor) * np.clip(
+            distance / float(boundary_radius), 0.0, 1.0
+        )
+    else:
+        boundary_weight = np.ones_like(static_valid, dtype=np.float32)
+    reliability = np.zeros_like(static_valid, dtype=np.float32)
+    reliability[known] = float(pose_reliability) * boundary_weight[known]
+    # Unknown pixels were already produced by the constrained background
+    # generator.  Do not blend that result with the same prior a second time.
+    blend_alpha = np.where(known, reliability, 1.0).astype(np.float32)
+    return reliability, blend_alpha
+
+
+def reliability_visual(reliability: np.ndarray) -> Image.Image:
+    """Purple means generated fallback; green means trusted source geometry."""
+    low = np.asarray(GENERATED_COLOR, dtype=np.float32) / 255.0
+    high = np.asarray(INPUT_BORDER, dtype=np.float32) / 255.0
+    value = low + reliability[..., None] * (high - low)
+    return Image.fromarray(np.rint(np.clip(value, 0, 1) * 255).astype(np.uint8), "RGB")
+
+
 def load_anchor_source_hand_occlusion(
     mask_root: Path,
     sequence: str,
@@ -776,6 +818,8 @@ def main() -> None:
             "good-pose probability controls geometric evidence during composition."
         ),
     )
+    parser.add_argument("--soft-reliability-boundary-radius", type=int, default=3)
+    parser.add_argument("--soft-reliability-edge-floor", type=float, default=0.25)
     parser.add_argument(
         "--annotated-exo-object",
         action="store_true",
@@ -845,6 +889,10 @@ def main() -> None:
     args = parser.parse_args()
     if not 0.0 <= args.object_alpha <= 1.0:
         raise ValueError("--object-alpha must be in [0, 1]")
+    if args.soft_reliability_boundary_radius < 0:
+        raise ValueError("--soft-reliability-boundary-radius must be non-negative")
+    if not 0.0 <= args.soft_reliability_edge_floor <= 1.0:
+        raise ValueError("--soft-reliability-edge-floor must be in [0, 1]")
     if args.object_source_hand_margin < 0:
         raise ValueError("--object-source-hand-margin must be non-negative")
     if args.object_source_front_margin_m < 0:
@@ -1103,7 +1151,7 @@ def main() -> None:
         previous_pose = initial_pose
 
     tile_size, gap = render_size, 8
-    columns, rows = 5, 2
+    columns, rows = 6, 2
     canvas_width = tile_size * columns + gap * (columns - 1)
     tile_height = tile_size + 44
     canvas_height = tile_height * rows + gap * (rows - 1)
@@ -1116,7 +1164,8 @@ def main() -> None:
             "foreground_masks", "arm_masks", "object_masks",
             "dynamic_completion_masks", "provenance_labels",
             "geometry_frames", "background_frames", "anchor_layer_frames",
-            "exo_layer_frames", "object_layer_frames",
+            "exo_layer_frames", "object_layer_frames", "fallback_background_frames",
+            "source_reliability_masks",
         ):
             directory = args.model_input_root / name
             directory.mkdir(parents=True, exist_ok=True)
@@ -1158,6 +1207,8 @@ def main() -> None:
             dynamic_support = np.zeros((render_size, render_size), dtype=np.float32)
             geometry_rgb = initial_rgb.copy()
             video_output = initial_rgb.copy()
+            fallback_background = generated_background.copy()
+            source_reliability = np.ones((render_size, render_size), dtype=np.float32)
             anchor_background_valid = ~initial_dynamic
             anchor_layer_visual[anchor_background_valid] = initial_rgb[
                 anchor_background_valid
@@ -1367,16 +1418,7 @@ def main() -> None:
                 nominal_depth_m=nominal_depth_m,
             )
             pose_reliability = pose_reliabilities[frame]
-            if (
-                pose_reliability < 1.0
-                and previous_generated_background is not None
-                and previous_pose is not None
-            ):
-                # The old compositor hard-pasted every reprojected pixel even
-                # when the pose estimator itself said the frame was weak.  A
-                # calibrated low-confidence frame now falls back continuously
-                # to the trajectory-warped prior instead of turning uncertain
-                # geometry into an irreversible hard constraint.
+            if previous_generated_background is not None and previous_pose is not None:
                 fallback_background, _ = generate_unknown_background(
                     np.zeros_like(geometry_rgb),
                     np.zeros_like(geometry_known),
@@ -1386,12 +1428,18 @@ def main() -> None:
                     intrinsics=intrinsics,
                     nominal_depth_m=nominal_depth_m,
                 )
-                generated_background = (
-                    pose_reliability * geometry_background
-                    + (1.0 - pose_reliability) * fallback_background
-                )
             else:
-                generated_background = geometry_background
+                fallback_background = geometry_background.copy()
+            source_reliability, geometry_alpha = soft_source_reliability(
+                static_valid, current_valid, history_valid,
+                pose_reliability,
+                args.soft_reliability_boundary_radius,
+                args.soft_reliability_edge_floor,
+            )
+            generated_background = (
+                geometry_alpha[..., None] * geometry_background
+                + (1.0 - geometry_alpha[..., None]) * fallback_background
+            )
             if object_layer is not None:
                 # Resolve hand/object occlusion in metric target-camera depth.
                 arm_in_front = arm_valid & (
@@ -1463,6 +1511,7 @@ def main() -> None:
                 ("anchor_layer_frames", anchor_layer_visual),
                 ("exo_layer_frames", exo_layer_visual),
                 ("object_layer_frames", object_layer_visual),
+                ("fallback_background_frames", fallback_background),
             ):
                 Image.fromarray(
                     np.rint(np.clip(value, 0, 1) * 255).astype(np.uint8), "RGB"
@@ -1475,8 +1524,9 @@ def main() -> None:
                 ("arm_masks", arm_valid),
                 ("object_masks", object_valid),
                 ("dynamic_completion_masks", dynamic_completion),
+                ("source_reliability_masks", source_reliability),
             ):
-                Image.fromarray(mask.astype(np.uint8) * 255, "L").save(
+                Image.fromarray(np.rint(np.clip(mask, 0, 1) * 255).astype(np.uint8), "L").save(
                     export_directories[name] / filename
                 )
             Image.fromarray(labels, "L").save(
@@ -1497,6 +1547,7 @@ def main() -> None:
                     "predicted_camera_pose_world": pose.tolist(),
                     "predicted_camera_pose_confidence": pose_confidences[frame],
                     "calibrated_camera_pose_reliability": pose_reliabilities[frame],
+                    "mean_source_reliability": float(source_reliability.mean()),
                 }
             )
         tiles = [
@@ -1517,7 +1568,9 @@ def main() -> None:
             ),
             title_tile(pil_rgb(geometry_rgb, tile_size), "几何观测（黑色为未知）", tile_size, INTERMEDIATE_BORDER),
             title_tile(provenance_mask, "信息通道蒙版", tile_size, INTERMEDIATE_BORDER),
-            title_tile(pil_rgb(generated_background, tile_size), "运动约束背景生成", tile_size, PREDICTION_BORDER),
+            title_tile(reliability_visual(source_reliability), "逐像素可靠度", tile_size, INTERMEDIATE_BORDER),
+            title_tile(pil_rgb(fallback_background, tile_size), "低可靠度回退", tile_size, PREDICTION_BORDER),
+            title_tile(pil_rgb(generated_background, tile_size), "软可靠度背景", tile_size, PREDICTION_BORDER),
             title_tile(pil_rgb(video_output, tile_size), "稳定视频合成", tile_size, PREDICTION_BORDER),
             title_tile(pil_rgb(gt, tile_size), "未来 ego 真值", tile_size, TARGET_BORDER),
         ]
@@ -1599,6 +1652,8 @@ def main() -> None:
                 "render_composition_uses_pose_reliability": (
                     args.pose_confidence_calibration is not None
                 ),
+                "soft_reliability_boundary_radius": args.soft_reliability_boundary_radius,
+                "soft_reliability_edge_floor": args.soft_reliability_edge_floor,
             },
             "frame_count": len(frames),
             "image_size": render_size,
