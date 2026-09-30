@@ -214,12 +214,17 @@ def main() -> None:
         "missing_hand_masks": missing_masks,
         "mask_availability": 1.0 - missing_masks / max(total_masks, 1),
         "mask_area_fraction": {
-            "mean": float(np.mean(mask_area)),
-            "median": float(np.median(mask_area)),
-            "p95": float(np.percentile(mask_area, 95)),
+            "count": len(mask_area),
+            "mean": float(np.mean(mask_area)) if mask_area else None,
+            "median": float(np.median(mask_area)) if mask_area else None,
+            "p95": float(np.percentile(mask_area, 95)) if mask_area else None,
         },
-        "gt_joint_inside_mask": float(np.mean(joint_hits)),
-        "gt_joint_inside_mask_dilated_11px": float(np.mean(dilated_joint_hits)),
+        "gt_joint_inside_mask": (
+            float(np.mean(joint_hits)) if joint_hits else None
+        ),
+        "gt_joint_inside_mask_dilated_11px": (
+            float(np.mean(dilated_joint_hits)) if dilated_joint_hits else None
+        ),
         "per_sequence": per_sequence,
     }
     args.output_root.mkdir(parents=True, exist_ok=True)
