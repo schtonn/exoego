@@ -1,0 +1,71 @@
+{
+  "status": "frozen_before_subject4_evaluation",
+  "implementation_commit": "1adf5be12abea3f8092619239d6055614465b647",
+  "selection_split": "val_subject3",
+  "selection_pair_ids": [
+    "subject3_h1_0_000000_000063_cam0_to_cam4",
+    "subject3_h2_3_000384_000447_cam0_to_cam4",
+    "subject3_k1_4_000160_000223_cam0_to_cam4"
+  ],
+  "test_split": "test_subject4",
+  "test_pair_ids": [
+    "subject4_h1_0_000000_000063_cam0_to_cam4",
+    "subject4_h2_3_000384_000447_cam0_to_cam4",
+    "subject4_k1_4_000160_000223_cam0_to_cam4",
+    "subject4_o1_5_000320_000383_cam0_to_cam4",
+    "subject4_o2_2_000064_000127_cam0_to_cam4",
+    "subject4_k2_4_000160_000223_cam0_to_cam4",
+    "subject4_k2_5_000000_000063_cam0_to_cam4",
+    "subject4_o1_7_000000_000063_cam0_to_cam4"
+  ],
+  "head_pose": {
+    "camera_indices": [0, 1, 2, 3],
+    "rotation_scale": 1.0,
+    "ransac_threshold_m": 0.025,
+    "motion_risk_rotation_scale_deg": 10.0,
+    "motion_risk_translation_scale_m": 0.01,
+    "calibration_good_rotation_deg": 1.0,
+    "calibration_good_translation_m": 0.01,
+    "calibration_file": "results/pose_confidence_calibration_val3.json"
+  },
+  "renderer": {
+    "render_size": 256,
+    "source_camera_indices": [0, 1, 2, 3],
+    "state_camera_indices": [0, 1, 2, 3],
+    "ego_first_rgbd": true,
+    "ego_first_pose": true,
+    "causal_motion_masks": true,
+    "source_feather_radius": 2,
+    "source_color_align": true,
+    "annotated_object_pose": true,
+    "annotated_object_mode": "anchor_warp",
+    "object_alpha": 0.25,
+    "object_source_hand_margin": 5,
+    "object_source_front_margin_m": 0.015
+  },
+  "completion": {
+    "model": "ProPainter",
+    "width": 256,
+    "height": 256,
+    "feather_radius": 2,
+    "fps": 15
+  },
+  "fusion_training": {
+    "width": 16,
+    "blocks": 1,
+    "blend_mode": "convex",
+    "residual_limit": 0.03,
+    "window": 5,
+    "stride": 2,
+    "epochs": 8,
+    "patience": 3,
+    "batch_size": 1,
+    "learning_rate": 0.0002,
+    "temporal_weight": 0.3,
+    "acceleration_weight": 0.15,
+    "temporal_regression_weight": 1.0,
+    "require_temporal_nonregression": true,
+    "seed": 26
+  },
+  "freeze_rule": "Do not select or tune any setting using subject4 results."
+}
