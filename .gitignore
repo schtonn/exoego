@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+envs/
+
+# Data, models, and experiment products
+datasets/
+models/
+weights/
+third_party/
+experiments/
+outputs/
+figures/
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.npy
+*.mp4
+*.avi
+*.mov
+
+# Local credentials and machine state
+.env
+.secrets/
+*.pem
+*.key
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
