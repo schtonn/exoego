@@ -1,0 +1,107 @@
+{
+  "protocol": "current final layered pipeline; terminal authorized fusion only",
+  "train_pair_ids": [
+    "subject1_h1_0_000000_000063_cam0_to_cam4",
+    "subject1_h2_3_000480_000543_cam0_to_cam4",
+    "subject1_k2_2_000224_000287_cam0_to_cam4",
+    "subject1_o2_0_000064_000127_cam0_to_cam4",
+    "subject2_h1_5_000416_000479_cam0_to_cam4",
+    "subject2_k1_1_000352_000415_cam0_to_cam4",
+    "subject2_k2_6_000704_000767_cam0_to_cam4",
+    "subject2_o1_2_000096_000159_cam0_to_cam4"
+  ],
+  "val_pair_ids": [
+    "subject3_h1_0_000000_000063_cam0_to_cam4",
+    "subject3_h2_3_000384_000447_cam0_to_cam4",
+    "subject3_k1_4_000160_000223_cam0_to_cam4",
+    "subject3_o1_5_000320_000383_cam0_to_cam4",
+    "subject3_o2_2_000064_000127_cam0_to_cam4"
+  ],
+  "train_splits": [
+    "train"
+  ],
+  "val_splits": [
+    "val"
+  ],
+  "train_windows": 240,
+  "val_windows": 60,
+  "parameter_count": 182516,
+  "best_epoch": 0,
+  "best_editable_l1": 0.09916101271907489,
+  "initialization": "exact current constrained-ProPainter output",
+  "correction_policy": "full edits in authorized repair pixels; reliability-weighted corrections up to 25% at seams and hand/object boundaries, smaller corrections on transported source interiors",
+  "history": [
+    {
+      "epoch": 0,
+      "train_loss": null,
+      "l1": 0.06633871992429098,
+      "authorized_l1": 0.10647885575890541,
+      "editable_l1": 0.09916101271907489,
+      "base_l1": 0.06925603387256464,
+      "proposal_l1": 0.06633875028540691,
+      "base_authorized_l1": 0.11883122834066549,
+      "proposal_authorized_l1": 0.10647899731993675,
+      "authorized_fraction": 0.2280620329082012,
+      "soft_only_fraction": 0.7318632021546364,
+      "mean_edit_weight": 0.28611488913496336,
+      "locked_mean_change": 1.1654360916717638e-10,
+      "noneditable_max_change": 0.0,
+      "delta_l1": 0.0254156154114753,
+      "acceleration_l1": 0.03677880034471551
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.10093578617088497,
+      "l1": 0.06466974938909213,
+      "authorized_l1": 0.09926145498951276,
+      "editable_l1": 0.09314347157875696,
+      "base_l1": 0.06925603387256464,
+      "proposal_l1": 0.06633875028540691,
+      "base_authorized_l1": 0.11883122834066549,
+      "proposal_authorized_l1": 0.10647899731993675,
+      "authorized_fraction": 0.2280620329082012,
+      "soft_only_fraction": 0.7318632021546364,
+      "mean_edit_weight": 0.28611488913496336,
+      "locked_mean_change": 0.0005434249920654111,
+      "noneditable_max_change": 0.0,
+      "delta_l1": 0.02564030553524693,
+      "acceleration_l1": 0.03710468520099918
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.095372557034716,
+      "l1": 0.06439360963801542,
+      "authorized_l1": 0.09823526156445345,
+      "editable_l1": 0.09220585599541664,
+      "base_l1": 0.06925603387256464,
+      "proposal_l1": 0.06633875028540691,
+      "base_authorized_l1": 0.11883122834066549,
+      "proposal_authorized_l1": 0.10647899731993675,
+      "authorized_fraction": 0.2280620329082012,
+      "soft_only_fraction": 0.7318632021546364,
+      "mean_edit_weight": 0.28611488913496336,
+      "locked_mean_change": 0.0006110506757977419,
+      "noneditable_max_change": 0.0,
+      "delta_l1": 0.0255358859586219,
+      "acceleration_l1": 0.03705954824884732
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.0946494608807067,
+      "l1": 0.06483852205177149,
+      "authorized_l1": 0.10033711728950341,
+      "editable_l1": 0.09418974332511425,
+      "base_l1": 0.06925603387256464,
+      "proposal_l1": 0.06633875028540691,
+      "base_authorized_l1": 0.11883122834066549,
+      "proposal_authorized_l1": 0.10647899731993675,
+      "authorized_fraction": 0.2280620329082012,
+      "soft_only_fraction": 0.7318632021546364,
+      "mean_edit_weight": 0.28611488913496336,
+      "locked_mean_change": 0.0008271239028545096,
+      "noneditable_max_change": 0.0,
+      "delta_l1": 0.025735910764584938,
+      "acceleration_l1": 0.03742511241386334
+    }
+  ]
+}

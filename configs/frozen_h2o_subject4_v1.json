@@ -2,10 +2,17 @@
   "status": "frozen_before_subject4_evaluation",
   "implementation_commit": "1adf5be12abea3f8092619239d6055614465b647",
   "selection_split": "val_subject3",
-  "selection_pair_ids": [
+  "pose_calibration_pair_ids": [
     "subject3_h1_0_000000_000063_cam0_to_cam4",
     "subject3_h2_3_000384_000447_cam0_to_cam4",
     "subject3_k1_4_000160_000223_cam0_to_cam4"
+  ],
+  "fusion_validation_pair_ids": [
+    "subject3_h1_0_000000_000063_cam0_to_cam4",
+    "subject3_h2_3_000384_000447_cam0_to_cam4",
+    "subject3_k1_4_000160_000223_cam0_to_cam4",
+    "subject3_o1_5_000320_000383_cam0_to_cam4",
+    "subject3_o2_2_000064_000127_cam0_to_cam4"
   ],
   "test_split": "test_subject4",
   "test_pair_ids": [

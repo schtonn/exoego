@@ -1,0 +1,281 @@
+{
+  "clips": [
+    {
+      "pair_id": "subject4_h1_0_000000_000063_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.9438047863188244,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.09188499613098366,
+          "psnr": 15.935384244214582,
+          "temporal_delta_l1": 0.02867423342440718
+        },
+        "propainter_composed": {
+          "l1": 0.09571497347304429,
+          "psnr": 15.445632752742355,
+          "temporal_delta_l1": 0.026868325708213674
+        },
+        "copy_first_frame": {
+          "l1": 0.10935665355630653,
+          "psnr": 14.557903728207602,
+          "temporal_delta_l1": 0.008918888230998349
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.10270639974131156,
+          "psnr": 14.94613183539192,
+          "temporal_delta_l1": 0.020820981973121242
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_h2_3_000384_000447_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8556082589285714,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.10855554328078315,
+          "psnr": 15.56613348073833,
+          "temporal_delta_l1": 0.018648350481144202
+        },
+        "propainter_composed": {
+          "l1": 0.1150948450205818,
+          "psnr": 15.058880363557774,
+          "temporal_delta_l1": 0.01986511995995878
+        },
+        "copy_first_frame": {
+          "l1": 0.1053001276123776,
+          "psnr": 13.639295751662786,
+          "temporal_delta_l1": 0.010215702506723583
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.10405445891240286,
+          "psnr": 13.892495411346829,
+          "temporal_delta_l1": 0.020271317011887027
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k1_4_000160_000223_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8580307733444941,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.06635809173344304,
+          "psnr": 19.795426570937337,
+          "temporal_delta_l1": 0.01902934400144444
+        },
+        "propainter_composed": {
+          "l1": 0.06940651515488902,
+          "psnr": 19.417904702538635,
+          "temporal_delta_l1": 0.01917769131000324
+        },
+        "copy_first_frame": {
+          "l1": 0.08275753236006177,
+          "psnr": 17.06597341476092,
+          "temporal_delta_l1": 0.013015040907488075
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.08002541297011906,
+          "psnr": 17.45127248187769,
+          "temporal_delta_l1": 0.024146769956875872
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k2_4_000160_000223_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8907446482824901,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.05006708236283095,
+          "psnr": 21.632471484054243,
+          "temporal_delta_l1": 0.01888947141787378
+        },
+        "propainter_composed": {
+          "l1": 0.05644787303985111,
+          "psnr": 20.011094893870705,
+          "temporal_delta_l1": 0.018432903974767652
+        },
+        "copy_first_frame": {
+          "l1": 0.045033803022412396,
+          "psnr": 21.424200257593608,
+          "temporal_delta_l1": 0.007546364109442439
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.054797263687880585,
+          "psnr": 20.273519460698147,
+          "temporal_delta_l1": 0.020470171786283933
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_k2_5_000000_000063_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8297940208798363,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.07628391068133097,
+          "psnr": 19.191923249103876,
+          "temporal_delta_l1": 0.021626506701752705
+        },
+        "propainter_composed": {
+          "l1": 0.07705243728148244,
+          "psnr": 19.004754161117898,
+          "temporal_delta_l1": 0.02180666612681522
+        },
+        "copy_first_frame": {
+          "l1": 0.07897076824748958,
+          "psnr": 18.062271606068833,
+          "temporal_delta_l1": 0.015557555822275018
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.08717876940807968,
+          "psnr": 17.60533985396283,
+          "temporal_delta_l1": 0.03731130165678839
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o1_5_000320_000383_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8785221160404266,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.09664733747325877,
+          "psnr": 15.902387866488787,
+          "temporal_delta_l1": 0.03565366952730122
+        },
+        "propainter_composed": {
+          "l1": 0.09431621053862194,
+          "psnr": 16.065736073294424,
+          "temporal_delta_l1": 0.03378113150917074
+        },
+        "copy_first_frame": {
+          "l1": 0.08515663569172223,
+          "psnr": 15.941417029420478,
+          "temporal_delta_l1": 0.015598004914179285
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.09374401257151649,
+          "psnr": 15.394565716730089,
+          "temporal_delta_l1": 0.03512411772884348
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o1_7_000000_000063_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.8465125674293155,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.09455536022072747,
+          "psnr": 16.326601178732968,
+          "temporal_delta_l1": 0.03753708715560616
+        },
+        "propainter_composed": {
+          "l1": 0.08264102475353019,
+          "psnr": 17.126852352292644,
+          "temporal_delta_l1": 0.03485980315474413
+        },
+        "copy_first_frame": {
+          "l1": 0.10465940371865318,
+          "psnr": 14.86087935353522,
+          "temporal_delta_l1": 0.014627252254755266
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.09861879705121278,
+          "psnr": 15.183237658282243,
+          "temporal_delta_l1": 0.0355406844567868
+        }
+      }
+    },
+    {
+      "pair_id": "subject4_o2_2_000064_000127_cam0_to_cam4",
+      "dataset_split": "test",
+      "frame_count_evaluated": 63,
+      "warp_first_frame_valid_coverage": 0.7835419669983879,
+      "warp_hole_policy": "copy unwarped first frame; reported explicitly in baseline name",
+      "metrics": {
+        "layered_no_completion": {
+          "l1": 0.08726883210517743,
+          "psnr": 16.759003984941486,
+          "temporal_delta_l1": 0.01750125535713729
+        },
+        "propainter_composed": {
+          "l1": 0.09021622991120373,
+          "psnr": 16.42848826900709,
+          "temporal_delta_l1": 0.018384127076514947
+        },
+        "copy_first_frame": {
+          "l1": 0.08217300955580656,
+          "psnr": 15.585788704646987,
+          "temporal_delta_l1": 0.009538252121939133
+        },
+        "warp_first_frame_copy_fill": {
+          "l1": 0.09293614946818225,
+          "psnr": 14.846343808609578,
+          "temporal_delta_l1": 0.017890115869381735
+        }
+      }
+    }
+  ],
+  "equal_clip_average": {
+    "layered_no_completion": {
+      "l1": 0.08395264424856692,
+      "psnr": 17.638666507401453,
+      "temporal_delta_l1": 0.024694989758333372
+    },
+    "propainter_composed": {
+      "l1": 0.08511126364665056,
+      "psnr": 17.31991794605269,
+      "temporal_delta_l1": 0.02414697110252355
+    },
+    "copy_first_frame": {
+      "l1": 0.08667599172060372,
+      "psnr": 16.392216230737056,
+      "temporal_delta_l1": 0.011877132608475144
+    },
+    "warp_first_frame_copy_fill": {
+      "l1": 0.08925765797633815,
+      "psnr": 16.199113278362415,
+      "temporal_delta_l1": 0.02644693255499606
+    }
+  },
+  "equal_clip_sample_std": {
+    "layered_no_completion": {
+      "l1": 0.018782224986773035,
+      "psnr": 2.2589898938161475,
+      "temporal_delta_l1": 0.008144913772144656
+    },
+    "propainter_composed": {
+      "l1": 0.01797427284750629,
+      "psnr": 1.9091054062172885,
+      "temporal_delta_l1": 0.006859337128129661
+    },
+    "copy_first_frame": {
+      "l1": 0.020757291074766118,
+      "psnr": 2.4699828910194577,
+      "temporal_delta_l1": 0.0032068203347651665
+    },
+    "warp_first_frame_copy_fill": {
+      "l1": 0.016027558743974657,
+      "psnr": 2.0889469447235722,
+      "temporal_delta_l1": 0.008106835374405114
+    }
+  },
+  "mean_warp_valid_coverage": 0.8608198922777933
+}

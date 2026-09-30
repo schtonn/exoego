@@ -127,6 +127,7 @@ def layered_ready(
     model_input: Path, pair_id: str,
     pose_confidence_calibration: Path | None = None,
     head_rotation_scale: float = 0.5,
+    annotated_object: bool = True,
 ) -> bool:
     manifest_path = model_input / "manifest.json"
     if not manifest_path.exists() or png_count(model_input / "input_frames") != 64:
@@ -148,6 +149,7 @@ def layered_ready(
         )
         and float(manifest["input_contract"].get("head_rotation_scale", -1.0))
         == head_rotation_scale
+        and bool(manifest.get("annotated_exo_object")) == annotated_object
     )
 
 
@@ -161,6 +163,14 @@ def main() -> None:
     parser.add_argument("--gpu", default="2")
     parser.add_argument("--pose-confidence-calibration", type=Path)
     parser.add_argument("--head-rotation-scale", type=float, default=0.5)
+    parser.add_argument(
+        "--annotated-object", action=argparse.BooleanOptionalAction, default=True,
+        help="Use annotated H2O object poses; disable for the frozen no-object ablation.",
+    )
+    parser.add_argument(
+        "--state-source-root", type=Path,
+        help="Reuse already frozen hand/arm/head state from another prepared root.",
+    )
     parser.add_argument("--stop-after", choices=("state", "layers", "propainter"))
     args = parser.parse_args()
     default_roots = {
@@ -169,10 +179,14 @@ def main() -> None:
         "test": WORKSPACE_ROOT / "datasets/H2O/experiments/final_layer_frozen_test8",
     }
     output_root = (args.output_root or default_roots[args.purpose]).resolve()
-    state_root = output_root / "state/hand"
-    arm_root = output_root / "state/arm"
-    head_root = output_root / "state/head"
-    mask_root = output_root / "state/initial_hand_masks"
+    state_base = (
+        args.state_source_root.resolve()
+        if args.state_source_root is not None else output_root
+    )
+    state_root = state_base / "state/hand"
+    arm_root = state_base / "state/arm"
+    head_root = state_base / "state/head"
+    mask_root = state_base / "state/initial_hand_masks"
     clip_root = output_root / "clips"
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -256,6 +270,7 @@ def main() -> None:
         layers_updated = not layered_ready(
             model_input, pair, args.pose_confidence_calibration,
             args.head_rotation_scale,
+            args.annotated_object,
         )
         if layers_updated:
             render_command = [
@@ -270,10 +285,14 @@ def main() -> None:
                 "--source-feather-radius", "2", "--source-color-align",
                 "--head-rotation-scale", str(args.head_rotation_scale),
                 "--causal-motion-masks",
-                "--annotated-exo-object", "--annotated-exo-object-mode", "anchor_warp",
-                "--object-alpha", "0.25", "--model-input-root", str(model_input),
+                "--model-input-root", str(model_input),
                 "--output", str(destination / "layered.mp4"),
             ]
+            if args.annotated_object:
+                render_command.extend([
+                    "--annotated-exo-object", "--annotated-exo-object-mode",
+                    "anchor_warp", "--object-alpha", "0.25",
+                ])
             if args.pose_confidence_calibration is not None:
                 render_command.extend([
                     "--pose-confidence-calibration",
@@ -315,7 +334,11 @@ def main() -> None:
             "pair_id": pair,
             "root": os.path.relpath(destination, PROJECT_ROOT),
             "frames": 64,
-            "protocol": "current_final_full4_anchor_object_propainter",
+            "protocol": (
+                "current_final_full4_anchor_object_propainter"
+                if args.annotated_object
+                else "current_final_full4_anchor_no_object_propainter"
+            ),
         })
         (output_root / f"{args.purpose}_clips.json").write_text(
             json.dumps({"purpose": args.purpose, "clips": completed}, indent=2),

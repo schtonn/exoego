@@ -171,6 +171,16 @@ class FinalLayerWindowDataset(Dataset):
             discover_clip(root, index_path, require_full_protocol)
             for root in roots
         ]
+        # Temporal windows overlap heavily.  Re-decoding the same immutable
+        # layer PNGs for every occurrence left the GPU idle for most of an
+        # epoch (about 16,800 small PNG reads, plus the full-resolution ego
+        # targets).  Cache decoded source tensors per dataset.  Samples are
+        # still assembled with torch.stack, so augmentation never mutates a
+        # cached tensor and the numerical training data is unchanged.
+        self._rgb_cache: dict[tuple[Path, tuple[int, int] | None], torch.Tensor] = {}
+        self._mask_cache: dict[Path, torch.Tensor] = {}
+        self._label_cache: dict[Path, torch.Tensor] = {}
+        self._target_cache: dict[tuple[int, int], torch.Tensor] = {}
         self.window = window
         self.samples: list[tuple[int, int]] = []
         for clip_index, clip in enumerate(self.clips):
@@ -183,6 +193,26 @@ class FinalLayerWindowDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.samples)
+
+    def _cached_rgb(
+        self, path: Path, size: tuple[int, int] | None = None
+    ) -> torch.Tensor:
+        key = (path, size)
+        if key not in self._rgb_cache:
+            self._rgb_cache[key] = _rgb(path, size)
+        return self._rgb_cache[key]
+
+    def _cached_mask(self, path: Path) -> torch.Tensor:
+        if path not in self._mask_cache:
+            self._mask_cache[path] = _mask(path)
+        return self._mask_cache[path]
+
+    def _cached_labels(self, path: Path) -> torch.Tensor:
+        if path not in self._label_cache:
+            self._label_cache[path] = torch.from_numpy(
+                np.asarray(Image.open(path), dtype=np.int64)
+            )
+        return self._label_cache[path]
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | str]:
         clip_index, start = self.samples[index]
@@ -201,11 +231,13 @@ class FinalLayerWindowDataset(Dataset):
                     if name == "proposal_frames"
                     else model_root / name / filename
                 )
-                streams[name].append(_rgb(path))
+                streams[name].append(self._cached_rgb(path))
             for name in MASK_STREAMS:
-                masks[name].append(_mask(model_root / name / filename))
-            labels = torch.from_numpy(
-                np.asarray(Image.open(model_root / "provenance_labels" / filename), dtype=np.int64)
+                masks[name].append(
+                    self._cached_mask(model_root / name / filename)
+                )
+            labels = self._cached_labels(
+                model_root / "provenance_labels" / filename
             )
             provenance.append(
                 F.one_hot(labels.clamp(1, PROVENANCE_CLASSES) - 1, PROVENANCE_CLASSES)
@@ -214,9 +246,12 @@ class FinalLayerWindowDataset(Dataset):
             )
             target_frame = clip.dataset_frames[time_index]
             spatial_size = (streams["input_frames"][-1].shape[2], streams["input_frames"][-1].shape[1])
-            targets.append(
-                _rgb(clip.target_rgb_dir / f"{target_frame:06d}.png", spatial_size)
-            )
+            target_key = (clip_index, time_index)
+            if target_key not in self._target_cache:
+                self._target_cache[target_key] = self._cached_rgb(
+                    clip.target_rgb_dir / f"{target_frame:06d}.png", spatial_size
+                )
+            targets.append(self._target_cache[target_key])
 
         # Network convention is C,T,H,W.  Preserve named base/masks as well so
         # composition and audits cannot accidentally use inferred channels.

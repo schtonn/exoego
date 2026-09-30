@@ -69,14 +69,27 @@ def metrics(output: torch.Tensor, data: dict[str, torch.Tensor | str]) -> dict[s
         "authorized_l1": float((absolute * authorized).sum() / denominator),
         "delta_l1": float((delta_output - delta_target).abs().mean()),
         "acceleration_l1": float((accel_output - accel_target).abs().mean()),
-        "locked_max_change": float(((output - current).abs() * (1 - authorized)).max()),
+        # Pixels outside the binary full-authorization mask may still have a
+        # small soft reliability weight.  Calling them "locked" incorrectly
+        # implies that any non-zero value is a contract violation.
+        "outside_hard_authorization_max_change": float(
+            ((output - current).abs() * (1 - authorized)).max()
+        ),
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--clip-root", type=Path, action="append", required=True)
-    parser.add_argument("--checkpoint", action="append", required=True, help="name=checkpoint.pt")
+    parser.add_argument("--checkpoint", action="append", default=[], help="name=checkpoint.pt")
+    parser.add_argument(
+        "--accepted-final-propainter",
+        action="store_true",
+        help=(
+            "Record ProPainter as the accepted final output when validation "
+            "early stopping selected epoch 0 (which reproduces ProPainter)."
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--index", type=Path, default=Path("datasets/H2O/oracle_state/paired_physical_clips.csv"))
     parser.add_argument("--device", default="cuda")
@@ -90,14 +103,23 @@ def main() -> None:
     for root in args.clip_root:
         data = clip_tensors(root, args.index)
         record = {"pair_id": data["pair_id"], "models": {}}
-        record["models"]["layered"] = metrics(data["base"], data)
-        record["models"]["current"] = metrics(data["current"], data)
-        predictions = infer_clip_models(
-            root, list(checkpoints.values()), args.index, device
-        )
-        for (name, _), frames in zip(checkpoints.items(), predictions):
-            prediction = torch.stack(frames)
-            record["models"][name] = metrics(prediction, data)
+        # Spell out the controls in the result file: these are the two
+        # ablations reviewers otherwise have to infer from implementation
+        # names.  ``fusion_off`` is the layered renderer before completion;
+        # ``propainter_only`` adds completion but no learned terminal fusion.
+        record["models"]["fusion_off"] = metrics(data["base"], data)
+        record["models"]["propainter_only"] = metrics(data["current"], data)
+        if args.accepted_final_propainter:
+            record["models"]["accepted_final"] = dict(
+                record["models"]["propainter_only"]
+            )
+        if checkpoints:
+            predictions = infer_clip_models(
+                root, list(checkpoints.values()), args.index, device
+            )
+            for (name, _), frames in zip(checkpoints.items(), predictions):
+                prediction = torch.stack(frames)
+                record["models"][name] = metrics(prediction, data)
         per_clip.append(record)
         print(json.dumps(record, ensure_ascii=False), flush=True)
     model_names = list(per_clip[0]["models"])
@@ -108,10 +130,31 @@ def main() -> None:
         }
         for name in model_names
     }
-    result = {"clips": per_clip, "equal_clip_average": aggregate}
+    aggregate_std = {
+        name: {
+            metric: float(np.std(
+                [clip["models"][name][metric] for clip in per_clip], ddof=1
+            )) if len(per_clip) > 1 else 0.0
+            for metric in per_clip[0]["models"][name]
+        }
+        for name in model_names
+    }
+    result = {
+        "clips": per_clip,
+        "equal_clip_average": aggregate,
+        "equal_clip_sample_std": aggregate_std,
+        "accepted_final_selection": (
+            "validation early stopping selected epoch 0; exact constrained "
+            "ProPainter proposal retained"
+            if args.accepted_final_propainter else None
+        ),
+    }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps({"equal_clip_average": aggregate}, ensure_ascii=False), flush=True)
+    print(json.dumps({
+        "equal_clip_average": aggregate,
+        "equal_clip_sample_std": aggregate_std,
+    }, ensure_ascii=False), flush=True)
 
 
 if __name__ == "__main__":

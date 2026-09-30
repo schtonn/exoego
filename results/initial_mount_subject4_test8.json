@@ -1,0 +1,85 @@
+{
+  "protocol": "target initial cam4 pose withheld; exo face RGB-D head frame + canonical head-camera mount learned from train split",
+  "calibration_requested": 64,
+  "calibration_valid": 64,
+  "calibration_mount_inliers": 64,
+  "selected_neighbors": 4,
+  "targets": [
+    {
+      "pair_id": "subject4_h1_0_000000_000063_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.013682790542543746,
+      "rotation_error_deg": 14.294800718434885,
+      "face_knn_translation_error_m": 0.02453756205427665,
+      "face_knn_rotation_error_deg": 18.9349452694314
+    },
+    {
+      "pair_id": "subject4_h2_3_000384_000447_cam0_to_cam4",
+      "detected_exo_views": 2,
+      "translation_error_m": 0.030925856152373584,
+      "rotation_error_deg": 15.77514640640455,
+      "face_knn_translation_error_m": 0.046281073596606395,
+      "face_knn_rotation_error_deg": 21.253684381664797
+    },
+    {
+      "pair_id": "subject4_k1_4_000160_000223_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.023669323943598716,
+      "rotation_error_deg": 12.267597105604905,
+      "face_knn_translation_error_m": 0.0331568571058537,
+      "face_knn_rotation_error_deg": 12.947764821218538
+    },
+    {
+      "pair_id": "subject4_k2_4_000160_000223_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.018024786920703265,
+      "rotation_error_deg": 10.79483556263567,
+      "face_knn_translation_error_m": 0.032770300240265456,
+      "face_knn_rotation_error_deg": 15.052668466351097
+    },
+    {
+      "pair_id": "subject4_k2_5_000000_000063_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.0092972341332241,
+      "rotation_error_deg": 11.209436829212759,
+      "face_knn_translation_error_m": 0.026679014868189938,
+      "face_knn_rotation_error_deg": 14.880720476331742
+    },
+    {
+      "pair_id": "subject4_o1_5_000320_000383_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.019260922890047046,
+      "rotation_error_deg": 18.74475125275813,
+      "face_knn_translation_error_m": 0.025185145388331425,
+      "face_knn_rotation_error_deg": 20.76493642551587
+    },
+    {
+      "pair_id": "subject4_o1_7_000000_000063_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.025668507134030648,
+      "rotation_error_deg": 15.726390789224698,
+      "face_knn_translation_error_m": 0.022969085889916998,
+      "face_knn_rotation_error_deg": 14.183926696288394
+    },
+    {
+      "pair_id": "subject4_o2_2_000064_000127_cam0_to_cam4",
+      "detected_exo_views": 3,
+      "translation_error_m": 0.03996412989363832,
+      "rotation_error_deg": 18.977340484852615,
+      "face_knn_translation_error_m": 0.03756561302434889,
+      "face_knn_rotation_error_deg": 20.24882668661887
+    }
+  ],
+  "equal_clip_average": {
+    "translation_error_m": 0.022561693951269928,
+    "rotation_error_deg": 14.723787393641027,
+    "face_knn_translation_error_m": 0.03114308152097368,
+    "face_knn_rotation_error_deg": 17.283434152927587
+  },
+  "equal_clip_sample_std": {
+    "translation_error_m": 0.009782948382741866,
+    "rotation_error_deg": 3.1707515169850637,
+    "face_knn_translation_error_m": 0.007955077748592184,
+    "face_knn_rotation_error_deg": 3.350034336442903
+  }
+}
