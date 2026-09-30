@@ -77,7 +77,10 @@ DEFAULT_VAL_PAIRS = (
 )
 
 
-def run(command: list[str], environment: dict[str, str] | None = None) -> None:
+def run(
+    command: list[str], environment: dict[str, str] | None = None,
+    working_directory: Path = PROJECT_ROOT,
+) -> None:
     print(json.dumps({"run": command}, ensure_ascii=False), flush=True)
     effective_environment = dict(os.environ)
     if environment is not None:
@@ -88,7 +91,7 @@ def run(command: list[str], environment: dict[str, str] | None = None) -> None:
     )
     effective_environment.setdefault("MPLCONFIGDIR", "/tmp/h2o-final-scale-matplotlib")
     subprocess.run(
-        command, cwd=PROJECT_ROOT, env=effective_environment, check=True
+        command, cwd=working_directory, env=effective_environment, check=True
     )
 
 
@@ -294,7 +297,7 @@ def main() -> None:
                 "-m", str(model_input / "repair_masks"),
                 "-o", str(proposal_root), "--width", "256", "--height", "256",
                 "--save_frames", "--fp16", "--save_fps", "15",
-            ], video_environment)
+            ], video_environment, working_directory=WORKSPACE_ROOT)
         composed_root = destination / "propainter_composed"
         proposal_reference = max(proposal_frames.glob("*.png"), key=lambda path: path.stat().st_mtime)
         if layers_updated or not png_set_is_fresh(
