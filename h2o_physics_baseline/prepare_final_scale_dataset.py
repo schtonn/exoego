@@ -42,6 +42,8 @@ DETECTION_PYTHON = WORKSPACE_ROOT / "envs/h2o-detection/bin/python"
 VIDEO_PYTHON = WORKSPACE_ROOT / "envs/propainter/bin/python"
 FACE_MODEL = WORKSPACE_ROOT / "models/mediapipe/face_landmarker.task"
 POSE_MODEL = WORKSPACE_ROOT / "models/mediapipe/pose_landmarker_full.task"
+HAND_MODEL = WORKSPACE_ROOT / "models/mediapipe/hand_landmarker.task"
+RAW_ROOT = WORKSPACE_ROOT / "datasets/H2O/raw"
 
 DEFAULT_PAIRS = (
     "subject1_h1_0_000000_000063_cam0_to_cam4",
@@ -191,12 +193,14 @@ def main() -> None:
                 str(DETECTION_PYTHON),
                 "h2o_geometric_baseline/precompute_mediapipe_student_state.py",
                 "--pair-id", pair, "--frames-per-clip", "64",
+                "--index", str(INDEX), "--model", str(HAND_MODEL),
                 "--output-root", str(state_root),
             ])
         if not npz_has_frames(arm_path, dense_frames):
             run([
                 str(DETECTION_PYTHON), "h2o_physics_baseline/precompute_exo_arm_state.py",
                 "--split", row["split"], "--pair-id", pair,
+                "--index", str(INDEX), "--pose-model", str(POSE_MODEL),
                 "--frames-per-clip", "64", "--output-root", str(arm_root),
             ])
         head_ready = False
@@ -223,6 +227,7 @@ def main() -> None:
                 str(DETECTION_PYTHON),
                 "h2o_geometric_baseline/precompute_initial_hand_masks.py",
                 "--pair-id", pair, "--student-root", str(state_root),
+                "--index", str(INDEX), "--raw-root", str(RAW_ROOT),
                 "--output-root", str(mask_root), "--previews", "0",
             ])
         if args.stop_after == "state":
