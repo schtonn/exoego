@@ -1,5 +1,7 @@
 {
-  "status": "selected_on_subject3_validation_then_evaluated_on_subject4",
+  "status": "rejected_recursive_background_blur",
+  "rejected_reason": "valid motion-warped prior pixels were repeatedly smoothed and recursively resampled; lower L1 hid severe visual blur",
+  "replaced_by": "configs/frozen_h2o_soft_reference_v3.json",
   "parent_config": "configs/frozen_h2o_subject4_v1.json",
   "selection_split": "val_subject3",
   "holdout_note": "subject4 had been inspected during v1 development; v2 parameters were selected without tuning on v2 subject4 metrics",

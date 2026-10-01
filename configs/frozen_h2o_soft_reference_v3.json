@@ -1,0 +1,20 @@
+{
+  "status": "accepted_after_visual_failure_audit",
+  "parent_config": "configs/frozen_h2o_subject4_v1.json",
+  "selection_split": "val_subject3",
+  "holdout_note": "subject4 had already been inspected during v1/v2 development; v3 is not a pristine untouched holdout",
+  "renderer": {
+    "soft_reliability_boundary_radius": 3,
+    "soft_reliability_edge_floor": 0.25,
+    "fallback_reference": "immutable generated ego anchor at frame 0",
+    "preserve_valid_warped_prior_pixels": true,
+    "recursive_resampling": false
+  },
+  "completion": {
+    "accepted": "ProPainter background and seam repair",
+    "nearest_limb_texture_fill": "rejected",
+    "nearest_limb_rejection": "skin/sleeve blobs and temporal delta regression despite lower hand-region L1"
+  },
+  "validation_result": "results/soft_reference_val5.json",
+  "test_result": "results/soft_reference_subject4_test8.json"
+}

@@ -708,10 +708,17 @@ def generate_unknown_background(
         )
         generated = torch.from_numpy(prior).permute(2, 0, 1)[None].float()
     generated = torch.where(known_tensor.bool(), observed, generated)
-    support = torch.maximum(
-        known_tensor,
-        torch.from_numpy(prior_valid.astype(np.float32))[None, None],
-    )
+    prior_support = torch.from_numpy(
+        prior_valid.astype(np.float32)
+    )[None, None]
+    support = torch.maximum(known_tensor, prior_support)
+    # Motion-warped prior pixels are real temporal support.  The previous
+    # implementation included them in ``unknown`` below, so every frame ran
+    # twelve averaging passes over the entire prior and recursively blurred
+    # the background.  Preserve both current observations and valid warped
+    # prior pixels exactly; smooth only newly expanded disocclusions.
+    fixed = (support > 0.5).clone()
+    fixed_values = generated.clone()
 
     # Propagate only current evidence or the motion-warped generated prior.
     # A 5x5 normalized expansion fills genuinely new field-of-view regions.
@@ -729,14 +736,16 @@ def generate_unknown_background(
     # pixel. Replicate padding is essential here: zero padding darkens unknown
     # pixels along the image boundary and can look like a failed completion.
     # The warped prior keeps the result temporally tied to camera motion.
-    unknown = ~known_tensor.bool()
+    smoothable = ~fixed
     for _ in range(12):
         smooth = F.avg_pool2d(
             F.pad(generated, (1, 1, 1, 1), mode="replicate"),
             3,
             stride=1,
         )
-        generated = torch.where(unknown.expand_as(generated), smooth, observed)
+        generated = torch.where(
+            smoothable.expand_as(generated), smooth, fixed_values
+        )
     result = generated[0].permute(1, 2, 0).numpy()
     return np.clip(result, 0.0, 1.0), ~known
 
@@ -1140,6 +1149,8 @@ def main() -> None:
     if args.disable_ego_anchor:
         previous_generated_background = None
         previous_pose = None
+        reference_generated_background = None
+        reference_pose = None
     else:
         initial_background_observed = np.where(
             (~initial_dynamic)[..., None], initial_rgb, 0.0
@@ -1149,6 +1160,12 @@ def main() -> None:
         )
         previous_generated_background = generated_background
         previous_pose = initial_pose
+        # Keep an immutable sharp reference.  Recursively warping the previous
+        # frame applies bilinear resampling over and over, which turns the
+        # entire background into a low-pass image even after the explicit
+        # smoothing bug is fixed.
+        reference_generated_background = generated_background.copy()
+        reference_pose = initial_pose.copy()
 
     tile_size, gap = render_size, 8
     columns, rows = 6, 2
@@ -1408,22 +1425,28 @@ def main() -> None:
             nominal_depth_m = (
                 float(np.nanmedian(observed_depth)) if observed_depth.size else 0.8
             )
+            prior_background = (
+                reference_generated_background
+                if reference_generated_background is not None
+                else previous_generated_background
+            )
+            prior_pose = reference_pose if reference_pose is not None else previous_pose
             geometry_background, _ = generate_unknown_background(
                 geometry_rgb,
                 geometry_known,
-                previous_generated=previous_generated_background,
-                previous_pose=previous_pose,
+                previous_generated=prior_background,
+                previous_pose=prior_pose,
                 current_pose=pose,
                 intrinsics=intrinsics,
                 nominal_depth_m=nominal_depth_m,
             )
             pose_reliability = pose_reliabilities[frame]
-            if previous_generated_background is not None and previous_pose is not None:
+            if prior_background is not None and prior_pose is not None:
                 fallback_background, _ = generate_unknown_background(
                     np.zeros_like(geometry_rgb),
                     np.zeros_like(geometry_known),
-                    previous_generated=previous_generated_background,
-                    previous_pose=previous_pose,
+                    previous_generated=prior_background,
+                    previous_pose=prior_pose,
                     current_pose=pose,
                     intrinsics=intrinsics,
                     nominal_depth_m=nominal_depth_m,

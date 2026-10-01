@@ -1,4 +1,6 @@
 {
+  "status": "rejected_recursive_background_blur",
+  "replaced_by": "results/soft_reference_val5.json",
   "clips": [
     {
       "pair_id": "subject3_h1_0_000000_000063_cam0_to_cam4",

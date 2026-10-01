@@ -70,7 +70,12 @@ def main() -> None:
     parser.add_argument("--student-state-root", type=Path, required=True)
     parser.add_argument("--arm-state-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--alpha", type=float, default=0.5)
+    parser.add_argument("--completion-alpha", type=float, default=0.75)
+    parser.add_argument("--observed-alpha", type=float, default=0.25)
+    parser.add_argument(
+        "--hand-mask-root", type=Path,
+        help="Optional evaluation-only projected hand-mask directory.",
+    )
     args = parser.parse_args()
 
     clip = discover_clip(args.clip_root, args.index)
@@ -88,6 +93,7 @@ def main() -> None:
     size = int(manifest["image_size"])
     intrinsics = load_intrinsics(clip.target_rgb_dir.parent / "cam_intrinsics.txt")
     rendered = []
+    outputs, targets, hand_masks = [], [], []
     for record in manifest["frames"]:
         local = f"{int(record['index']):06d}.png"
         frame = int(record["dataset_frame"])
@@ -107,17 +113,26 @@ def main() -> None:
         completion = missing_limb_completion_mask(
             hand_support, arm_support, observed, object_mask
         )
+        expected = (
+            ((hand_support > 0.025) | (arm_support > 0.10)) & (~object_mask)
+        )
         texture = nearest_texture(layered, observed)
         filled = current.copy()
         if texture is not None:
-            filled[completion] = (
-                (1.0 - args.alpha) * current[completion]
-                + args.alpha * texture[completion]
+            correction = expected.astype(np.float32) * args.observed_alpha
+            correction[completion] = args.completion_alpha
+            filled = (
+                current * (1.0 - correction[..., None])
+                + texture * correction[..., None]
             )
         channels = np.zeros_like(current)
         channels[observed] = np.asarray(FOREGROUND_COLOR) / 255.0
         channels[completion] = np.asarray(DYNAMIC_COMPLETION_COLOR) / 255.0
         target = rgb(clip.target_rgb_dir / f"{frame:06d}.png", size)
+        outputs.append(filled)
+        targets.append(target)
+        if args.hand_mask_root is not None:
+            hand_masks.append(mask(args.hand_mask_root / f"{frame:06d}.png", size))
         tiles = (
             title_tile(pil(current), "当前输出", size, PREDICTION_BORDER),
             title_tile(pil(channels), "手臂观测与补齐区", size, INTERMEDIATE_BORDER),
@@ -145,6 +160,25 @@ def main() -> None:
     process.stdin.close()
     if process.wait() != 0:
         raise RuntimeError("ffmpeg failed")
+    output_stack = np.stack(outputs)
+    target_stack = np.stack(targets)
+    error = np.abs(output_stack - target_stack).mean(axis=-1)
+    metrics = {
+        "full_l1": float(error.mean()),
+        "delta_l1": float(np.abs(
+            np.diff(output_stack, axis=0) - np.diff(target_stack, axis=0)
+        ).mean()),
+        "completion_alpha": args.completion_alpha,
+        "observed_alpha": args.observed_alpha,
+    }
+    if hand_masks:
+        hand = np.stack(hand_masks)
+        metrics["hand_l1"] = float(error[hand].mean())
+        metrics["hand_fraction"] = float(hand.mean())
+    args.output.with_suffix(".json").write_text(
+        json.dumps(metrics, indent=2) + "\n", encoding="utf-8"
+    )
+    print(json.dumps(metrics))
     print(args.output)
 
 
